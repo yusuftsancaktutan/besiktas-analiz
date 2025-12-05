@@ -2,22 +2,19 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import smtplib
-from email.message import EmailMessage
-import random
-import time
 from io import BytesIO
+import random
 import datetime
 
 # --- 1. SAYFA KONFİGÜRASYONU ---
 st.set_page_config(
-    page_title="BJK Bilet Operasyon Merkezi",
+    page_title="Beşiktaş JK - Bilet Operasyon Merkezi",
     page_icon="🦅",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --- 2. PREMIUM CSS (REACT TASARIMINDAN PORT EDİLDİ) ---
+# --- 2. CSS & TASARIM (React Kodundan Port Edildi) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600;700&display=swap');
@@ -30,20 +27,16 @@ st.markdown("""
             color: #eee;
         }
         
-        /* SCROLLBAR */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #111; }
-        ::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #d91a2a; }
-
-        /* SIDEBAR TASARIMI */
+        /* SIDEBAR */
         [data-testid="stSidebar"] {
             background-image: linear-gradient(180deg, #000 0%, #111 100%);
             border-right: 1px solid #333;
         }
-        [data-testid="stSidebar"] * { color: #ccc !important; }
-        
-        /* CARD GLASS EFFECT (React Kodundan) */
+        [data-testid="stSidebar"] h1, [data-testid="stSidebar"] p, [data-testid="stSidebar"] label {
+            color: #ccc !important;
+        }
+
+        /* CARD GLASS EFFECT */
         .card-glass {
             background: rgba(255, 255, 255, 0.03);
             backdrop-filter: blur(10px);
@@ -51,34 +44,32 @@ st.markdown("""
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 20px;
-            transition: transform 0.2s, border-color 0.2s;
+            transition: transform 0.2s;
         }
         .card-glass:hover {
-            transform: translateY(-2px);
             border-color: rgba(255, 255, 255, 0.2);
         }
 
         /* METRİKLER */
-        [data-testid="stMetricValue"] {
-            color: #ffffff !important;
+        div[data-testid="stMetricValue"] {
             font-size: 2rem !important;
             font-weight: 700 !important;
+            color: #ffffff !important;
         }
-        [data-testid="stMetricLabel"] {
-            color: #888 !important;
+        div[data-testid="stMetricLabel"] {
             font-size: 0.85rem !important;
+            color: #888 !important;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
 
-        /* BUTONLAR */
+        /* BUTONLAR (Kırmızı Gradient) */
         .stButton > button {
             background: linear-gradient(45deg, #d91a2a, #b30000);
             color: white !important;
             border: none;
             border-radius: 8px;
             font-weight: 600;
-            padding: 0.5rem 1rem;
             transition: all 0.3s ease;
             width: 100%;
         }
@@ -87,43 +78,66 @@ st.markdown("""
             transform: scale(1.02);
         }
         
-        /* TABLO */
+        /* SECONDARY BUTONLAR */
+        .stButton > button[kind="secondary"] {
+            background: transparent;
+            border: 1px solid #555;
+            color: #aaa !important;
+        }
+        .stButton > button[kind="secondary"]:hover {
+            border-color: white;
+            color: white !important;
+        }
+
+        /* TABLOLAR */
         [data-testid="stDataFrame"] {
             background-color: rgba(255,255,255,0.02);
             border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 10px;
         }
 
-        /* CUSTOM BADGES */
-        .status-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 12px;
+        /* STATUS BADGES */
+        .badge-success {
+            background-color: rgba(16, 185, 129, 0.2);
+            color: #34D399;
+            padding: 4px 8px;
+            border-radius: 4px;
             font-size: 0.7rem;
             font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            border: 1px solid rgba(16, 185, 129, 0.3);
         }
-        .status-pending { background: #333; color: #aaa; border: 1px solid #444; }
-        .status-success { background: rgba(16, 185, 129, 0.2); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .badge-pending {
+            background-color: rgba(107, 114, 128, 0.2);
+            color: #9CA3AF;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            border: 1px solid rgba(107, 114, 128, 0.3);
+        }
         
         /* MENÜ */
+        .stRadio > div { background: transparent; }
         .stRadio label {
-            background: transparent;
-            padding: 10px;
+            padding: 10px 15px;
             border-radius: 8px;
             transition: 0.2s;
+            margin-bottom: 5px;
+            color: #aaa !important;
         }
         .stRadio label:hover {
             background: rgba(255,255,255,0.05);
+            color: #fff !important;
+        }
+        /* Seçili Olan */
+        .stRadio div[aria-checked="true"] + div {
             color: #d91a2a !important;
+            font-weight: bold;
         }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. VERİ YAPILARI & STATE YÖNETİMİ ---
+# --- 3. VERİ VE SABİTLER ---
 
-# Fikstür Verisi (React Kodundan)
 INITIAL_MATCHES = [
     { "id": 'm1', "opponent": 'Antalyaspor', "date": '2024-08-18', "league": 'Süper Lig', "score": '4-2' },
     { "id": 'm2', "opponent": 'Lugano', "date": '2024-08-29', "league": 'UEFA Avrupa Ligi', "score": '5-1' },
@@ -138,358 +152,390 @@ INITIAL_MATCHES = [
     { "id": 'm11', "opponent": 'Fenerbahçe', "date": '2024-12-07', "league": 'Süper Lig', "score": '-' },
 ]
 
-if 'matches' not in st.session_state:
-    st.session_state['matches'] = INITIAL_MATCHES
+# VIP Blok Planları (React Kodundan)
+PLANS = {
+    "427": { "name": "427", "rowsStartNumber": 1, "rows": [{ "start": 1, "count": 28 }, { "start": 1, "count": 28 }, { "start": 1, "count": 27 }, { "start": 1, "count": 26 }, { "start": 1, "count": 25 }, { "start": 1, "count": 25 }, { "start": 1, "count": 25 }, { "start": 1, "count": 23 }, { "start": 1, "count": 23 }, { "start": 1, "count": 23 }, { "start": 1, "count": 23 }, { "start": 1, "count": 23 }, { "start": 1, "count": 23 }, { "start": 1, "count": 23 }, { "start": 1, "count": 23 }, { "start": 1, "count": 18 }, { "start": 1, "count": 18 }] },
+    "426": { "name": "426", "rowsStartNumber": 1, "rows": [{ "start": 1, "count": 19 }, { "start": 1, "count": 36 }, { "start": 1, "count": 36 }, { "start": 1, "count": 34 }, { "start": 1, "count": 32 }, { "start": 1, "count": 32 }, { "start": 1, "count": 32 }, { "start": 1, "count": 30 }, { "start": 1, "count": 30 }, { "start": 1, "count": 30 }, { "start": 1, "count": 30 }, { "start": 1, "count": 30 }, { "start": 1, "count": 30 }, { "start": 1, "count": 29 }, { "start": 1, "count": 28 }, { "start": 1, "count": 26 }, { "start": 1, "count": 26 }] },
+    "100": { "name": "VIP 100", "rowsStartNumber": 4, "rows": [{ "start": 21, "count": 37 }, { "start": 21, "count": 37 }, { "start": 21, "count": 37 }, { "start": 21, "count": 37 }, { "start": 21, "count": 37 }, { "start": 20, "count": 37 }, { "start": 25, "count": 37 }, { "start": 25, "count": 37 }, { "start": 25, "count": 37 }, { "start": 25, "count": 37 }, { "start": 25, "count": 37 }, { "start": 25, "count": 37 }, { "start": 25, "count": 37 }, { "start": 25, "count": 37 }, { "start": 25, "count": 37 }, { "start": 25, "count": 37 }, { "start": 25, "count": 37 }, { "start": 25, "count": 37 }, { "start": 25, "count": 37 }, { "start": 25, "count": 37 }] },
+    "113": { "name": "113", "rowsStartNumber": 1, "rows": [{ "start": 1, "count": 18 }, { "start": 1, "count": 15 }, { "start": 1, "count": 15 }, { "start": 1, "count": 15 }, { "start": 1, "count": 15 }, { "start": 1, "count": 15 }, { "start": 1, "count": 14 }, { "start": 1, "count": 20 }, { "start": 1, "count": 20 }, { "start": 1, "count": 20 }, { "start": 1, "count": 20 }, { "start": 1, "count": 20 }, { "start": 1, "count": 20 }, { "start": 1, "count": 20 }, { "start": 1, "count": 20 }, { "start": 1, "count": 20 }, { "start": 1, "count": 20 }, { "start": 1, "count": 20 }, { "start": 1, "count": 20 }, { "start": 1, "count": 20 }, { "start": 1, "count": 20 }, { "start": 1, "count": 20 }, { "start": 1, "count": 20 }, { "start": 1, "count": 20 }] },
+}
 
-# Raporları Saklamak İçin (ID bazlı)
-if 'reports' not in st.session_state:
-    st.session_state['reports'] = {} 
+CATEGORY_MAPPINGS = {
+    "1. Kategori": "115-116 VIP", "2. Kategori": "101-126 DOĞU ÜST", "3. Kategori": "103-124", 
+    "4. Kategori": "102-125", "5. Kategori": "114-117", "6. Kategori": "3. Kategori", 
+    "10. Kategori": "VIP100"
+}
 
-if 'selected_match_id' not in st.session_state:
-    st.session_state['selected_match_id'] = None
+# Session State Başlatma
+if 'matches' not in st.session_state: st.session_state['matches'] = INITIAL_MATCHES
+if 'reports' not in st.session_state: st.session_state['reports'] = {} 
+if 'seats' not in st.session_state: st.session_state['seats'] = {} # Koltuk durumu
+if 'selected_match_id' not in st.session_state: st.session_state['selected_match_id'] = None
 
-# --- 4. YARDIMCI FONKSİYONLAR ---
-
-def format_currency(value):
-    return f"₺{value:,.0f}"
-
-def process_data(file):
+# --- 4. EXCEL İŞLEME (React Mantığına Göre) ---
+def process_excel_report(file):
     try:
-        if file.name.endswith('.csv'):
-            df = pd.read_csv(file, header=None)
-        else:
-            df = pd.read_excel(file, header=None)
+        # Excel'i oku (Header yok, koordinatla çalışacağız)
+        df = pd.read_excel(file, header=None)
         
-        # Başlık satırını bul
-        header_index = -1
-        for i, row in df.head(20).iterrows(): 
-            row_str = row.astype(str).str.lower().to_string()
-            if "maç" in row_str or "tribün" in row_str or "tribun" in row_str:
-                header_index = i
-                break
-        
-        if header_index == -1:
-            st.error("❌ Dosyada uygun başlık satırı bulunamadı.")
-            return None
+        # 1. Hasılat Verileri (Özel Hücreler: C116, C120, C122 vb.)
+        # Pandas 0-indexed, Excel 1-indexed. C116 -> Row 115, Col 2
+        try:
+            val_c116 = float(df.iloc[115, 2]) if pd.notnull(df.iloc[115, 2]) else 0
+            val_c120 = float(df.iloc[119, 2]) if pd.notnull(df.iloc[119, 2]) else 0
+            val_c122 = float(df.iloc[121, 2]) if pd.notnull(df.iloc[121, 2]) else 0
+            net_income = val_c116 - val_c120 - val_c122
+        except:
+            net_income = 0
 
-        df.columns = df.iloc[header_index]
-        df = df[header_index + 1:].reset_index(drop=True)
-        df.columns = [str(c).strip() for c in df.columns]
-        
-        # Kolon Eşleştirme (Otomatik Algılama)
-        cols = df.columns
-        # Genellikle: [..., Tribün, Sayı] veya [Kategori, ..., Adet, Tutar]
-        # React kodundaki mantık: Kategori (Col 0), Adet (Col 10) gibi. Biz burada esnek olalım.
-        
-        # Basit Eşleştirme Denemesi
-        target_cols = {'Mac': None, 'Tribun': None, 'Adet': None, 'Tutar': None}
-        
-        # Eğer 'Adet' veya 'Satılan' kolonu varsa
-        for c in cols:
-            cl = c.lower()
-            if 'adet' in cl or 'sayı' in cl or 'satılan' in cl: target_cols['Adet'] = c
-            elif 'tribün' in cl or 'kategori' in cl or 'blok' in cl: target_cols['Tribun'] = c
-            elif 'maç' in cl or 'organizasyon' in cl: target_cols['Mac'] = c
-            elif 'tutar' in cl or 'bedel' in cl or 'hasılat' in cl: target_cols['Tutar'] = c
+        # 2. Fiyat Listesi (A12:B25 Aralığı)
+        # React kodundaki range: { s: { c: 0, r: 11 }, e: { c: 1, r: 24 } }
+        price_map = {}
+        try:
+            price_df = df.iloc[11:25, 0:2] # Rows 11-24, Cols A-B
+            for _, row in price_df.iterrows():
+                cat = str(row[0]).split('-')[0].strip()
+                price = float(row[1]) if pd.notnull(row[1]) else 0
+                if cat and price > 0:
+                    price_map[cat] = price
+        except:
+            pass
 
-        # Eğer bulamazsa pozisyona göre (Son kolonlar genelde sayıdır)
-        if not target_cols['Adet'] and len(cols) >= 3:
-             target_cols['Adet'] = cols[-1]
-             target_cols['Tribun'] = cols[-2]
-             target_cols['Mac'] = cols[0]
+        # 3. Satış Verileri (A45:K58 Aralığı)
+        # React: { s: { c: 0, r: 44 }, e: { c: 10, r: 57 } }
+        sales_data = []
+        try:
+            sales_df = df.iloc[44:58, 0:11] # Rows 44-57, Cols A-K (K is index 10)
+            
+            for _, row in sales_df.iterrows():
+                raw_cat = str(row[0])
+                if "Toplam" in raw_cat or pd.isna(raw_cat): continue
+                
+                base_cat = raw_cat.split('-')[0].strip()
+                display_cat = CATEGORY_MAPPINGS.get(base_cat, base_cat)
+                
+                price = price_map.get(base_cat, 0)
+                sold_count = float(row[10]) if pd.notnull(row[10]) else 0 # K sütunu (Index 10)
+                
+                if sold_count > 0:
+                    sales_data.append({
+                        'category': display_cat,
+                        'price': price,
+                        'sold': int(sold_count),
+                        'gross_revenue': sold_count * price
+                    })
+        except:
+            st.warning("Tablo aralığı okunamadı, standart formatta olmayabilir.")
 
-        if not target_cols['Adet'] or not target_cols['Tribun']:
-             st.error("Gerekli kolonlar (Tribün, Adet) bulunamadı.")
-             return None
-
-        df_clean = df.rename(columns={
-            target_cols['Mac']: 'Mac',
-            target_cols['Tribun']: 'Tribun',
-            target_cols['Adet']: 'Adet',
-            target_cols.get('Tutar', 'Yok'): 'Tutar'
-        })
-        
-        # Sayısal Temizlik
-        df_clean['Adet'] = pd.to_numeric(df_clean['Adet'], errors='coerce').fillna(0)
-        if 'Tutar' in df_clean.columns:
-             df_clean['Tutar'] = pd.to_numeric(df_clean['Tutar'], errors='coerce').fillna(0)
-        else:
-             df_clean['Tutar'] = 0 # Tutar yoksa 0
-
-        # Toplam satırlarını at
-        if 'Mac' in df_clean.columns:
-             df_clean = df_clean[~df_clean['Mac'].astype(str).str.contains('Toplam', case=False, na=False)]
-        
-        return df_clean
+        result_df = pd.DataFrame(sales_data)
+        return result_df, net_income
 
     except Exception as e:
-        st.error(f"Dosya okuma hatası: {e}")
-        return None
+        st.error(f"Hata: {e}")
+        return None, 0
 
-# --- 5. GÜVENLİK (Basitleştirilmiş) ---
-def check_login():
-    if st.session_state.get("logged_in", False):
-        return True
+def format_currency(val):
+    return f"₺{val:,.0f}"
+
+# --- 5. ANA SAYFA MODÜLLERİ ---
+
+def module_dashboard():
+    # Header
+    st.markdown("""
+    <div style='background: #111; padding: 20px; border-radius: 12px; border-left: 5px solid #d91a2a; margin-bottom: 20px;'>
+        <h2 style='margin:0; color:white;'>🦅 Bilet Operasyon Merkezi</h2>
+        <p style='margin:0; color:#888;'>Hoş geldiniz, Admin.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Maç Listesi (Kartlar)
+    st.markdown("### 📅 Fikstür ve Rapor Durumu")
     
-    # Giriş Ekranı
-    col1, col2, col3 = st.columns([1, 1.5, 1])
-    with col2:
-        st.markdown("<br><br>", unsafe_allow_html=True)
-        st.markdown("""
-        <div class="card-glass" style="text-align:center; padding: 40px; border-top: 4px solid #d91a2a;">
-            <div style="width:80px; height:80px; background:white; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; margin-bottom:20px; box-shadow:0 0 20px rgba(255,255,255,0.2);">
-                <span style="font-size:24px; font-weight:900; color:black;">BJK</span>
-            </div>
-            <h2 style="color:white; margin-bottom:5px;">PERSONEL GİRİŞİ</h2>
-            <p style="color:#888; font-size:0.9rem; margin-bottom:30px;">Bilet Operasyon Merkezi</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        with st.form("login"):
-            email = st.text_input("Kurumsal E-Posta", placeholder="ad.soyad@bjk.com.tr")
-            pw = st.text_input("Şifre", type="password")
-            if st.form_submit_button("GİRİŞ YAP"):
-                # Demo Girişi (Herhangi bir BJK maili ve doğru şifre)
-                if email.endswith("@bjk.com.tr") and pw == st.secrets.get("password", "1903"):
-                    st.session_state["logged_in"] = True
-                    st.session_state["user_email"] = email
-                    st.rerun()
-                else:
-                    st.error("Hatalı e-posta veya şifre!")
-    return False
-
-if not check_login():
-    st.stop()
-
-# -------------------------------------------------------------------------
-# 6. SAYFA MODÜLLERİ
-# -------------------------------------------------------------------------
-
-# --- MAÇ LİSTESİ MODÜLÜ ---
-def module_match_list():
-    st.markdown("## 📅 Fikstür ve Raporlar")
-    
-    # Maç Kartları Grid
     cols = st.columns(3)
     for i, match in enumerate(st.session_state['matches']):
         has_report = match['id'] in st.session_state['reports']
         col = cols[i % 3]
         
         with col:
-            # HTML Kart Tasarımı
-            border_color = "#10B981" if has_report else "#444"
-            status_html = f'<span class="status-badge status-success">ANALİZ HAZIR</span>' if has_report else '<span class="status-badge status-pending">RAPOR BEKLENİYOR</span>'
+            # Durum Rozeti
+            badge_html = f'<span class="badge-success">ANALİZ HAZIR</span>' if has_report else '<span class="badge-pending">RAPOR YOK</span>'
+            border_color = "#10B981" if has_report else "#333"
             
-            # Kart Tıklama Yerine Buton Kullanımı (Streamlit Kısıtı)
+            # HTML Kart
             st.markdown(f"""
-            <div class="card-glass" style="border-left: 4px solid {border_color}; position:relative;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                    <span style="font-size:0.7rem; color:#888; font-weight:bold;">{match['league'].upper()}</span>
-                    {status_html}
+            <div class="card-glass" style="border-left: 4px solid {border_color}; min-height: 160px; position:relative;">
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="color:#666; font-size:0.75rem; font-weight:bold;">{match['league'].upper()}</span>
+                    {badge_html}
                 </div>
-                <h3 style="margin:0; color:white;">{match['opponent']}</h3>
+                <h3 style="margin-top:10px; margin-bottom:5px; color:white; font-size:1.3rem;">{match['opponent']}</h3>
                 <p style="color:#aaa; font-size:0.9rem;">{match['date']}</p>
-                <div style="margin-top:15px; font-size:0.8rem; color:#666;">
-                    {match.get('score') or 'Skor Girilmedi'}
+                <div style="position:absolute; bottom:20px; right:20px; font-size:1.5rem; font-weight:bold; color:#333;">
+                    {match['score']}
                 </div>
             </div>
             """, unsafe_allow_html=True)
             
-            if st.button(f"{'Raporu İncele' if has_report else 'Rapor Yükle'}", key=f"btn_{match['id']}"):
+            # Aksiyon Butonu
+            btn_text = "Raporu İncele" if has_report else "Rapor Yükle"
+            if st.button(btn_text, key=match['id']):
                 st.session_state['selected_match_id'] = match['id']
                 st.rerun()
 
-# --- RAPOR DETAY MODÜLÜ ---
 def module_report_detail():
     match_id = st.session_state['selected_match_id']
     match = next((m for m in st.session_state['matches'] if m['id'] == match_id), None)
     
-    if not match:
-        st.error("Maç bulunamadı.")
-        return
+    if not match: st.error("Hata"); return
 
-    # Header
-    c1, c2 = st.columns([1, 5])
+    # Üst Bar
+    c1, c2 = st.columns([1, 6])
     with c1:
-        if st.button("← Geri Dön"):
+        if st.button("← Geri"):
             st.session_state['selected_match_id'] = None
             st.rerun()
     with c2:
-        st.markdown(f"## 📊 {match['opponent']} - Maç Analizi")
+        st.markdown(f"## {match['opponent']} - Rapor Detayı")
 
-    # Rapor Var mı?
+    # Veri Var mı?
     if match_id in st.session_state['reports']:
-        df = st.session_state['reports'][match_id]
+        data = st.session_state['reports'][match_id]
+        df = data['df']
+        net_income = data['net_income']
         
-        # KPI Kartları
-        total_tickets = df['Adet'].sum()
-        total_revenue = df['Tutar'].sum()
-        top_tribune = df.loc[df['Adet'].idxmax()]
+        # React'taki KPI Kartları
+        total_rev = df['gross_revenue'].sum()
+        total_sold = df['sold'].sum()
         
         k1, k2, k3 = st.columns(3)
-        k1.metric("Toplam Bilet", f"{total_tickets:,.0f}")
-        k2.metric("Toplam Hasılat", format_currency(total_revenue))
-        k3.metric("En Dolu Blok", f"{top_tribune['Tribun']}", f"{top_tribune['Adet']:,.0f} Adet")
+        k1.metric("Toplam Hasılat (Brüt)", format_currency(total_rev))
+        k2.metric("Net Gelir (Tahmini)", format_currency(net_income), delta="Passo kesintisi hariç")
+        k3.metric("Satılan Bilet", f"{total_sold:,.0f}")
         
         st.markdown("---")
         
         # Grafikler
         g1, g2 = st.columns([2, 1])
         with g1:
-            st.markdown("#### 🎫 Blok Bazlı Dağılım")
-            fig = px.bar(df.sort_values('Adet', ascending=False).head(15), 
-                         x='Tribun', y='Adet', text_auto='.2s',
-                         color='Adet', color_continuous_scale=['#333', '#d91a2a'])
-            fig.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=400)
-            st.plotly_chart(fig, use_container_width=True)
+            st.markdown("#### Hasılat Dağılımı")
+            fig_bar = px.bar(df, x='category', y='gross_revenue', text_auto='.2s', 
+                             color='gross_revenue', color_continuous_scale=['#333', '#d91a2a'])
+            fig_bar.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=False)
+            st.plotly_chart(fig_bar, use_container_width=True)
             
         with g2:
-            st.markdown("#### 💰 Hasılat Payı")
-            fig_pie = px.pie(df.head(10), values='Tutar', names='Tribun', hole=0.4,
+            st.markdown("#### Satış Adet Payı")
+            fig_pie = px.pie(df, values='sold', names='category', hole=0.4,
                              color_discrete_sequence=px.colors.sequential.RdBu)
-            fig_pie.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', showlegend=False, height=400)
+            fig_pie.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', showlegend=False)
             st.plotly_chart(fig_pie, use_container_width=True)
             
-        # Veri Tablosu
-        with st.expander("Detaylı Veri Listesi"):
-            st.dataframe(df, use_container_width=True)
-            
-        # Silme Butonu
-        if st.button("🗑️ Raporu Sil", type="primary"):
+        # Tablo
+        st.dataframe(df, use_container_width=True)
+        
+        # Silme
+        if st.button("Raporu Sil", type="primary"):
             del st.session_state['reports'][match_id]
             st.rerun()
-            
+
     else:
-        # Rapor Yükleme Ekranı
-        st.info(f"{match['opponent']} maçı için henüz rapor yüklenmemiş.")
+        # Upload Ekranı (React tarzı)
+        st.info("Bu maç için henüz rapor yüklenmedi.")
         
-        uploaded_file = st.file_uploader("Passolig Raporunu Yükle (Excel/CSV)", type=['xlsx', 'xls', 'csv'])
+        # Dropzone benzeri alan
+        uploaded_file = st.file_uploader("Passolig Raporunu (.xlsx) Buraya Sürükleyin", type=['xlsx', 'xls'])
+        
         if uploaded_file:
-            with st.spinner("Dosya işleniyor..."):
-                time.sleep(1)
-                df = process_data(uploaded_file)
-                if df is not None:
-                    st.session_state['reports'][match_id] = df
-                    st.success("Rapor başarıyla yüklendi!")
+            df, income = process_excel_report(uploaded_file)
+            if df is not None and not df.empty:
+                st.session_state['reports'][match_id] = {'df': df, 'net_income': income}
+                st.success("Rapor işlendi!")
+                st.rerun()
+
+def module_stadium_vip():
+    st.markdown("## 🏟️ VIP Tribün Yönetimi")
+    
+    # 2 Görünüm: Genel Plan veya Blok Detayı
+    if 'selected_block' not in st.session_state:
+        # --- GÖRÜNÜM 1: STADYUM PLANI (React Koordinatlarıyla) ---
+        st.markdown("İşlem yapmak istediğiniz bloğu haritadan seçiniz.")
+        
+        # Plotly ile İnteraktif Harita
+        # React kodundaki 'top' ve 'left' değerlerini X/Y koordinatına çeviriyoruz.
+        # React: top (Y ekseni ters), left (X ekseni). width=1000, height=700.
+        
+        blocks = [
+            {'id': '112', 'x': 220, 'y': 700-145}, {'id': '113', 'x': 270, 'y': 700-145}, 
+            {'id': '114', 'x': 340, 'y': 700-145}, {'id': '115', 'x': 444, 'y': 700-145},
+            {'id': 'VIP 100', 'x': 480, 'y': 700-550}, # VIP 100 Örneği
+            {'id': '426', 'x': 830, 'y': 700-590}, # 426 Örneği
+            {'id': '427', 'x': 780, 'y': 700-630}, # 427 Örneği
+        ]
+        
+        # Hızlıca tüm React koordinatlarını eklemek yerine örnek set kullanıyoruz
+        # Kullanıcı '427', '426', '100', '113' bloklarını tanımlamış.
+        selectable_blocks = ['427', '426', '100', '113']
+        
+        fig = go.Figure()
+        
+        # Saha
+        fig.add_trace(go.Scatter(x=[500], y=[350], mode='text', text=['SAHA'], textfont=dict(size=30, color='rgba(255,255,255,0.2)')))
+        
+        # Bloklar
+        for b in blocks:
+            color = '#d91a2a' if b['id'].replace('VIP ', '') in selectable_blocks else '#333'
+            fig.add_trace(go.Scatter(
+                x=[b['x']], y=[b['y']],
+                mode='markers+text',
+                marker=dict(symbol='square', size=40, color=color, line=dict(width=1, color='white')),
+                text=[b['id']],
+                textfont=dict(color='white', size=10),
+                hoverinfo='text',
+                hovertext=f"Blok: {b['id']}",
+                name=b['id']
+            ))
+
+        fig.update_layout(
+            template="plotly_dark",
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(20,20,20,1)',
+            xaxis=dict(range=[0, 1000], showgrid=False, visible=False),
+            yaxis=dict(range=[0, 700], showgrid=False, visible=False),
+            height=600,
+            showlegend=False,
+            clickmode='event+select'
+        )
+        
+        # Blok Seçimi (Selectbox ile simüle ediyoruz çünkü Plotly click event Streamlit'te bazen gecikmeli)
+        col_sel, col_map = st.columns([1, 3])
+        with col_sel:
+            st.info("Harita üzerindeki kırmızı bloklar yönetilebilir.")
+            sel = st.selectbox("Blok Seçiniz:", selectable_blocks)
+            if st.button("Bloğa Git"):
+                st.session_state['selected_block'] = sel
+                st.rerun()
+        
+        with col_map:
+            st.plotly_chart(fig, use_container_width=True)
+
+    else:
+        # --- GÖRÜNÜM 2: BLOK DETAYI & KOLTUKLAR ---
+        block_id = st.session_state['selected_block']
+        plan = PLANS.get(block_id)
+        
+        # Header
+        hb1, hb2 = st.columns([1, 6])
+        with hb1:
+            if st.button("← Haritaya Dön"):
+                del st.session_state['selected_block']
+                st.rerun()
+        with hb2:
+            st.markdown(f"## Blok {block_id} - Koltuk Planı")
+
+        if not plan:
+            st.error("Plan verisi bulunamadı.")
+            return
+
+        # Koltuk Haritasını Çiz (Plotly Scatter ile)
+        # React'taki "Row" ve "Count" mantığını X,Y koordinatına döküyoruz.
+        seat_x = []
+        seat_y = []
+        seat_text = []
+        seat_colors = []
+        
+        # Kayıtlı koltukları al
+        saved_seats = st.session_state['seats'].get(block_id, {})
+
+        rows = plan['rows'] # [{start:1, count:28}, ...]
+        start_row_num = plan['rowsStartNumber'] # 1
+        
+        # Y ekseni: Sıra numarası (Ters sıra ile gelir genelde stadyumlarda, saha aşağıdadır)
+        # React kodunda: rowNo = start + (length - 1 - i) -> Üstten alta çiziyor.
+        
+        for i, row_data in enumerate(rows):
+            row_num = start_row_num + (len(rows) - 1 - i)
+            count = row_data['count']
+            start_seat = row_data['start']
+            
+            # Hizalama (Basitçe ortalayalım)
+            x_offset = (50 - count) / 2 # 50 varsayılan genişlik
+            
+            for j in range(count):
+                seat_num = start_seat + j
+                seat_key = f"{row_num}-{seat_num}"
+                
+                seat_x.append(x_offset + j)
+                seat_y.append(row_num)
+                seat_text.append(f"Sıra:{row_num} No:{seat_num}")
+                
+                # Renk (Dolu mu boş mu)
+                if seat_key in saved_seats:
+                    seat_colors.append("#FACC15") # Sarı (Dolu/Kombine)
+                else:
+                    seat_colors.append("#ffffff") # Beyaz (Boş)
+
+        fig_seats = go.Figure(data=go.Scatter(
+            x=seat_x, y=seat_y,
+            mode='markers',
+            marker=dict(size=12, color=seat_colors, line=dict(width=1, color='#333')),
+            text=seat_text,
+            hoverinfo='text'
+        ))
+        
+        fig_seats.update_layout(
+            title="SAHA BU TARAFTA ↓",
+            title_x=0.5,
+            template="plotly_dark",
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            xaxis=dict(showgrid=False, visible=False),
+            yaxis=dict(showgrid=False, title="Sıra Numarası"),
+            height=600,
+            hovermode='closest'
+        )
+        
+        c_map, c_panel = st.columns([3, 1])
+        
+        with c_map:
+            st.plotly_chart(fig_seats, use_container_width=True)
+            
+        with c_panel:
+            st.markdown("### 💺 Koltuk Yönetimi")
+            st.info("Grafik üzerinde koltukların durumunu görebilirsiniz.")
+            
+            with st.form("seat_assign"):
+                st.write("Koltuk Ata / Düzenle")
+                r_num = st.number_input("Sıra No", min_value=1, step=1)
+                s_num = st.number_input("Koltuk No", min_value=1, step=1)
+                cat = st.selectbox("Kategori", ["Kombine", "Sponsor", "Boş"])
+                
+                if st.form_submit_button("Kaydet"):
+                    k = f"{r_num}-{s_num}"
+                    if block_id not in st.session_state['seats']:
+                        st.session_state['seats'][block_id] = {}
+                    
+                    if cat == "Boş":
+                        if k in st.session_state['seats'][block_id]:
+                            del st.session_state['seats'][block_id][k]
+                    else:
+                        st.session_state['seats'][block_id][k] = cat
+                    st.success("Güncellendi!")
                     st.rerun()
 
-# --- STADYUM PLANI MODÜLÜ ---
-def module_stadium():
-    st.markdown("## 🏟️ Stadyum Blok Planı")
-    st.markdown("Aşağıdaki harita, stadyum bloklarını ve (varsa) son yüklenen raporun doluluk durumunu gösterir.")
-    
-    # Son yüklenen raporu bul (Referans için)
-    last_df = None
-    if st.session_state['reports']:
-        last_match_id = list(st.session_state['reports'].keys())[-1]
-        last_df = st.session_state['reports'][last_match_id]
-        st.caption(f"Veri Kaynağı: Son yüklenen maç raporu")
-
-    # Koordinat Haritası (React kodundaki pozisyonlara benzer)
-    # Basit bir Scatter Mapbox veya Plotly Scatter ile stadyum şekli çiziyoruz
-    
-    fig = go.Figure()
-
-    # Saha (Ortada)
-    fig.add_trace(go.Scatter(
-        x=[0], y=[0], mode='text', text=['SAHA'],
-        textfont=dict(color='white', size=20, weight='bold')
-    ))
-    
-    # Blok Koordinatları (Temsili - React kodundakine benzer yerleşim)
-    # Kuzey (Üst) - Güney (Alt) - Doğu (Sağ) - Batı (Sol)
-    
-    blocks = [
-        # Batı (VIP) - Sol
-        {'x': -3, 'y': 0, 'name': 'VIP 100', 'color': '#FFD700'},
-        {'x': -3, 'y': 1, 'name': '101', 'color': '#333'},
-        {'x': -3, 'y': -1, 'name': '102', 'color': '#333'},
-        
-        # Doğu - Sağ
-        {'x': 3, 'y': 0, 'name': '415', 'color': '#d91a2a'},
-        {'x': 3, 'y': 1, 'name': '416', 'color': '#d91a2a'},
-        {'x': 3, 'y': -1, 'name': '414', 'color': '#d91a2a'},
-        
-        # Kuzey - Üst
-        {'x': 0, 'y': 3, 'name': '408', 'color': '#444'},
-        {'x': 1, 'y': 3, 'name': '409', 'color': '#444'},
-        {'x': -1, 'y': 3, 'name': '407', 'color': '#444'},
-        
-        # Güney - Alt
-        {'x': 0, 'y': -3, 'name': '422', 'color': '#444'},
-        {'x': 1, 'y': -3, 'name': '423', 'color': '#444'},
-        {'x': -1, 'y': -3, 'name': '421', 'color': '#444'},
-    ]
-    
-    # Blokları Çiz
-    for blk in blocks:
-        # Eğer veri varsa rengi doluluğa göre ayarla (Burada sabit renk örnekli)
-        fig.add_trace(go.Scatter(
-            x=[blk['x']], y=[blk['y']],
-            mode='markers+text',
-            marker=dict(symbol='square', size=60, color=blk['color'], line=dict(width=2, color='white')),
-            text=[blk['name']],
-            textfont=dict(color='white'),
-            hoverinfo='text',
-            hovertext=f"Blok: {blk['name']}"
-        ))
-
-    fig.update_layout(
-        template="plotly_dark",
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        xaxis=dict(showgrid=False, zeroline=False, visible=False, range=[-5, 5]),
-        yaxis=dict(showgrid=False, zeroline=False, visible=False, range=[-5, 5]),
-        height=600,
-        showlegend=False
-    )
-    
-    st.plotly_chart(fig, use_container_width=True)
-    
-    st.markdown("""
-    <div class="card-glass">
-        <h4>ℹ️ Blok Bilgileri</h4>
-        <ul>
-            <li><b>Doğu Tribünü:</b> Maraton (413-418)</li>
-            <li><b>Batı Tribünü:</b> VIP ve Basın (100-126)</li>
-            <li><b>Kuzey/Güney:</b> Kale Arkaları (404-412 / 419-427)</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-
-# -------------------------------------------------------------------------
-# 7. ANA NAVİGASYON VE SIDEBAR
-# -------------------------------------------------------------------------
+# --- 6. NAVİGASYON ---
 
 with st.sidebar:
-    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Besiktas_jk.svg/240px-Besiktas_jk.svg.png", width=120)
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    user = st.session_state.get('user_email', 'Misafir')
-    st.markdown(f"""
-    <div style='padding:10px; background:rgba(255,255,255,0.05); border-radius:8px; border-left:3px solid #d91a2a;'>
-        <small style='color:#888'>Kullanıcı:</small><br>
-        <b style='color:#fff'>{user}</b>
-    </div>
-    """, unsafe_allow_html=True)
-    
+    st.markdown("### BJK Bilet Merkezi")
+    menu = st.radio("Menü", ["Fikstür & Raporlar", "VIP & Stadyum"], label_visibility="collapsed")
     st.markdown("---")
-    
-    menu = st.radio("MENÜ", ["Fikstür & Raporlar", "Stadyum Planı", "Ayarlar"], label_visibility="collapsed")
-    
-    st.markdown("<br><br><br>", unsafe_allow_html=True)
-    if st.button("ÇIKIŞ"):
-        st.session_state["logged_in"] = False
+    if st.button("Çıkış Yap"):
+        st.session_state['logged_in'] = False
         st.rerun()
 
-# SAYFA YÖNLENDİRME
-if st.session_state['selected_match_id']:
-    module_report_detail() # Detay görünümü aktifse onu göster
-else:
-    if menu == "Fikstür & Raporlar":
-        module_match_list()
-    elif menu == "Stadyum Planı":
-        module_stadium()
+if menu == "Fikstür & Raporlar":
+    if st.session_state['selected_match_id']:
+        module_report_detail()
     else:
-        st.markdown("## ⚙️ Ayarlar")
-        st.info("Kullanıcı yönetimi ve sistem ayarları bu alanda yer alacaktır.")
+        module_dashboard()
+elif menu == "VIP & Stadyum":
+    module_stadium_vip()
