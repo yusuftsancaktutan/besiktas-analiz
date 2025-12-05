@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components # Web sitesi gömmek için gerekli
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -439,29 +440,26 @@ def page_bilet_analiz():
         st.info("👆 Başlamak için yukarıdaki alana rapor dosyasını sürükleyin.")
 
 def page_stadyum_plani():
-    st.markdown('<div class="content-box"><h2>🏟️ Tüpraş Stadyumu Planı</h2></div>', unsafe_allow_html=True)
+    st.markdown('<div class="content-box"><h2>🏟️ Tüpraş Stadyumu - 3D İnteraktif Plan</h2><p style="color:#aaa;">Koltuk seçimi ve görüş açısı simülasyonu için aşağıdaki planı kullanabilirsiniz.</p></div>', unsafe_allow_html=True)
     
-    col_img, col_data = st.columns([2, 1])
-    with col_img:
-        st.markdown('<div class="content-box">', unsafe_allow_html=True)
-        # Placeholder Resim
-        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Vodafone_Arena_nuit.jpg/1200px-Vodafone_Arena_nuit.jpg", use_container_width=True)
-        st.caption("Stadyum Genel Görünüm")
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-    with col_data:
-        st.markdown("""
-        <div class="content-box">
-            <h4 style="color:#E30613 !important;">Kapasite Bilgileri</h4>
-            <ul style="list-style-type: none; padding: 0; color:#ddd;">
-                <li style="padding: 10px 0; border-bottom: 1px solid #333;"><b>Toplam Kapasite:</b> 42.590</li>
-                <li style="padding: 10px 0; border-bottom: 1px solid #333;"><b>Doğu Tribünü:</b> 12.000</li>
-                <li style="padding: 10px 0; border-bottom: 1px solid #333;"><b>Batı Tribünü:</b> 10.500</li>
-                <li style="padding: 10px 0; border-bottom: 1px solid #333;"><b>Kuzey Kale Arkası:</b> 10.045</li>
-                <li style="padding: 10px 0;"><b>Güney Kale Arkası:</b> 10.045</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
+    # Iframe container (Koyu Tema)
+    st.markdown("""
+        <div style="background-color: #1e1e1e; border-radius: 12px; border: 1px solid #333; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+    """, unsafe_allow_html=True)
+    
+    # Harici siteyi göm
+    components.iframe("https://oturmaplaniapp.web.app/", height=800, scrolling=True)
+    
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    st.markdown("""
+    <div class="content-box">
+        <h4 style="color:#E30613 !important;">ℹ️ Kapasite Notları</h4>
+        <p style="color:#ccc;">Bu interaktif harita harici bir kaynaktır. Resmi blok yerleşimleri ile ufak farklılıklar gösterebilir.</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 def page_musteri_hizmetleri():
     st.markdown('<div class="content-box"><h2>📞 Destek & Notlar</h2></div>', unsafe_allow_html=True)
