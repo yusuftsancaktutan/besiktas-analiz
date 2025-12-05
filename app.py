@@ -16,133 +16,139 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- 2. GELİŞMİŞ CSS & ANİMASYONLAR ---
+# --- 2. GELİŞMİŞ "DARK MODE" CSS ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap');
 
-        /* GENEL SAYFA AYARLARI (Renkleri Sabitle) */
-        html, body, [class*="css"] {
-            font-family: 'Poppins', sans-serif;
-            color: #333333; /* Varsayılan yazı rengi koyu */
-        }
-        
-        /* Ana Arka Plan */
+        /* GENEL SAYFA (Koyu Gri Zemin) */
         .stApp {
-            background-color: #f4f6f9; /* Çok açık gri, göz yormaz */
-        }
-
-        /* SIDEBAR TASARIMI */
-        [data-testid="stSidebar"] {
-            background-color: #000000; /* BJK Siyahı */
-            background-image: linear-gradient(180deg, #000000 0%, #1a1a1a 100%);
-            border-right: 2px solid #E30613;
-        }
-        [data-testid="stSidebar"] * {
-            color: #ffffff !important; /* Sidebar içindeki her şey beyaz */
+            background-color: #121212; /* En koyu gri */
+            font-family: 'Poppins', sans-serif;
         }
         
-        /* MENÜ (Radyo Butonları) */
-        .stRadio > div {
-            padding-top: 20px;
+        /* TÜM YAZILAR (Beyaz) */
+        h1, h2, h3, h4, h5, h6, p, li, span, div {
+            color: #e0e0e0 !important;
         }
+        
+        /* SIDEBAR (Tam Siyah) */
+        [data-testid="stSidebar"] {
+            background-color: #000000;
+            border-right: 1px solid #333;
+        }
+        
+        /* MENÜ BUTONLARI */
         .stRadio label {
             background-color: transparent;
-            color: white !important;
-            padding: 12px 20px;
-            margin-bottom: 8px;
+            color: #e0e0e0 !important;
+            padding: 15px;
             border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.1);
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
+            border: 1px solid #333;
+            transition: all 0.3s ease;
+            margin-bottom: 5px;
         }
         .stRadio label:hover {
-            background-color: #E30613; /* BJK Kırmızısı */
-            transform: translateX(5px);
-            border-color: #E30613;
-            box-shadow: 0 4px 15px rgba(227, 6, 19, 0.4);
+            background-color: #1a1a1a;
+            border-color: #E30613; /* Kırmızı Çerçeve */
+            color: #E30613 !important;
         }
-        /* Seçili olan menü öğesi */
-        .stRadio [data-testid="stMarkdownContainer"] > p {
-            font-weight: 600;
-            font-size: 1.1rem;
+        /* Radyo butonu yuvarlağını gizle, tam buton gibi görünsün */
+        .stRadio div[role="radiogroup"] > label > div:first-child {
+            display: none;
         }
 
-        /* GİRİŞ EKRANI KARTI */
-        .login-card {
-            background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-            border-top: 6px solid #E30613;
-            text-align: center;
-            animation: fadeIn 1s ease-in-out;
+        /* İÇERİK KUTULARI (Daha Açık Koyu Gri) */
+        .content-box {
+            background-color: #1e1e1e;
+            padding: 25px;
+            border-radius: 12px;
+            border: 1px solid #333;
+            border-left: 5px solid #E30613; /* Sol Kırmızı Çizgi */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
         }
         
-        /* KPI KARTLARI (Özel Tasarım) */
+        /* GİRİŞ KARTI */
+        .login-card {
+            background-color: #1e1e1e;
+            padding: 40px;
+            border-radius: 20px;
+            border: 2px solid #E30613; /* Kırmızı Çerçeve */
+            box-shadow: 0 0 20px rgba(227, 6, 19, 0.2);
+            text-align: center;
+        }
+
+        /* KPI KARTLARI */
         .kpi-card {
-            background: white;
-            padding: 25px;
-            border-radius: 15px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            border-left: 5px solid #000;
-            position: relative;
-            overflow: hidden;
+            background-color: #1e1e1e;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #333;
+            border-bottom: 4px solid #E30613; /* Alt Kırmızı Çizgi */
+            text-align: center;
+            transition: transform 0.2s;
         }
         .kpi-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+            border-color: #E30613;
         }
-        .kpi-card.red-border { border-left-color: #E30613; }
-        .kpi-card.gray-border { border-left-color: #6c757d; }
-        
-        .kpi-title { font-size: 0.9rem; color: #888; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
-        .kpi-value { font-size: 2.5rem; font-weight: 800; color: #1a1a1a; margin: 10px 0; }
-        .kpi-icon { position: absolute; right: 20px; top: 20px; font-size: 3rem; color: #f0f0f0; z-index: 0; }
-        
-        /* BUTONLAR */
-        .stButton > button {
-            background: linear-gradient(45deg, #E30613, #b30000);
+        .kpi-title { font-size: 0.9rem; color: #aaa !important; text-transform: uppercase; letter-spacing: 1px; }
+        .kpi-value { font-size: 2.2rem; font-weight: 800; color: #ffffff !important; margin: 5px 0; }
+        .kpi-sub { font-size: 0.8rem; color: #E30613 !important; font-weight: bold; }
+
+        /* INPUT ALANLARI (Koyu Zemin) */
+        .stTextInput > div > div > input {
+            background-color: #2d2d2d;
             color: white;
+            border: 1px solid #444;
+            border-radius: 5px;
+        }
+        .stTextInput > div > div > input:focus {
+            border-color: #E30613;
+            box-shadow: none;
+        }
+        
+        /* BUTONLAR (Kırmızı) */
+        .stButton > button {
+            background-color: #E30613;
+            color: white !important;
             border: none;
-            padding: 12px 24px;
-            border-radius: 50px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            box-shadow: 0 4px 15px rgba(227, 6, 19, 0.3);
-            transition: all 0.3s ease;
-            width: 100%;
+            border-radius: 5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: 0.3s;
         }
         .stButton > button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(227, 6, 19, 0.5);
-            color: white !important;
-        }
-
-        /* ANİMASYONLAR */
-        @keyframes fadeIn {
-            0% { opacity: 0; transform: translateY(20px); }
-            100% { opacity: 1; transform: translateY(0); }
+            background-color: #ff1f1f;
+            box-shadow: 0 0 10px #E30613;
         }
         
-        /* İçerik Konteynerleri */
-        .content-box {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
-            margin-bottom: 20px;
-            animation: fadeIn 0.6s ease-out;
-        }
-        
-        /* Tablo ve Dataframe Düzenlemeleri */
+        /* TABLO/DATAFRAME */
         [data-testid="stDataFrame"] {
+            background-color: #1e1e1e;
+            border: 1px solid #333;
+        }
+        
+        /* METRİK RENKLERİ (Streamlit Native) */
+        [data-testid="stMetricValue"] {
+            color: #ffffff !important;
+        }
+        [data-testid="stMetricLabel"] {
+            color: #aaaaaa !important;
+        }
+        
+        /* SELECTBOX & UPLOAD */
+        .stSelectbox > div > div {
+            background-color: #2d2d2d;
+            color: white;
+        }
+        .stFileUploader {
+            background-color: #1e1e1e;
+            padding: 20px;
+            border: 1px dashed #555;
             border-radius: 10px;
-            overflow: hidden;
-            border: 1px solid #eee;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -151,7 +157,6 @@ st.markdown("""
 # 3. YARDIMCI FONKSİYONLAR
 # -------------------------------------------------------------------------
 def convert_df_to_excel(df):
-    """Excel indirme formatı."""
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Analiz')
@@ -159,7 +164,6 @@ def convert_df_to_excel(df):
     return processed_data
 
 def process_data(file):
-    """Veri işleme ve temizleme."""
     try:
         if file.name.endswith('.csv'):
             df_raw = pd.read_csv(file, header=None)
@@ -210,16 +214,14 @@ def send_verification_email(to_email, code):
         smtp_server = st.secrets["smtp"]["server"]
         smtp_port = st.secrets["smtp"]["port"]
     except Exception:
-        st.warning("⚠️ SMTP ayarları yapılandırılmamış. Kod: " + code) # Demo için kodu ekrana yaz (Gerçekte silinmeli)
-        return True # Demo için True dönüyoruz
+        st.warning(f"⚠️ SMTP Ayarı Yok. Kod: {code}") 
+        return True 
 
     msg = EmailMessage()
     msg.set_content(f"""
-    Sayın Kullanıcı,
+    Giriş Kodunuz: {code}
     
-    BJK Portal Giriş Kodunuz: {code}
-    
-    Güvenliğiniz için bu kodu paylaşmayınız.
+    Bu kodu kimseyle paylaşmayınız.
     """)
     msg['Subject'] = 'BJK Portal - Giris Kodu'
     msg['From'] = sender_email
@@ -246,15 +248,15 @@ def check_login():
         st.session_state["email_to_verify"] = None
 
     # Şık Giriş Ekranı
-    col1, col2, col3 = st.columns([1, 1.2, 1])
+    col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<br><br>", unsafe_allow_html=True)
         # Kart Başlangıcı
         st.markdown('<div class="login-card">', unsafe_allow_html=True)
         
-        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Besiktas_jk.svg/240px-Besiktas_jk.svg.png", width=120)
-        st.markdown("<h2 style='color:black; margin-top:10px;'>Personel Girişi</h2>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#666;'>Beşiktaş JK Yönetim Portalı</p>", unsafe_allow_html=True)
+        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Besiktas_jk.svg/240px-Besiktas_jk.svg.png", width=100)
+        st.markdown("<h3 style='margin-top:15px; color:white !important;'>PERSONEL GİRİŞİ</h3>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#888 !important; font-size:0.9rem;'>BJK Yönetim Portalı</p>", unsafe_allow_html=True)
 
         if st.session_state["login_step"] == "email":
             email_input = st.text_input("Kurumsal E-Posta", placeholder="ad.soyad@bjk.com.tr")
@@ -301,39 +303,36 @@ if not check_login():
 def page_dashboard():
     # Header
     st.markdown("""
-    <div style='background-color: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; border-left: 6px solid #E30613; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>
-        <h1 style='margin:0; font-size: 2rem;'>🦅 Yönetim Paneli</h1>
-        <p style='margin:0; color: #666;'>Hoş geldiniz, sisteme başarıyla giriş yaptınız.</p>
+    <div style='background-color: #1e1e1e; padding: 20px; border-radius: 15px; margin-bottom: 20px; border-left: 6px solid #E30613;'>
+        <h2 style='margin:0; color:white !important;'>🦅 YÖNETİM PANELİ</h2>
+        <p style='margin:0; color: #888 !important;'>Hoş geldiniz, güncel veriler aşağıdadır.</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Özel HTML KPI Kartları
+    # KPI Kartları
     c1, c2, c3 = st.columns(3)
     with c1:
         st.markdown("""
         <div class="kpi-card">
-            <div class="kpi-title">Aktif Sezon</div>
+            <div class="kpi-title">AKTİF SEZON</div>
             <div class="kpi-value">2024-25</div>
-            <div style="color: green; font-size: 0.9rem;">🟢 Sezon Devam Ediyor</div>
-            <div class="kpi-icon">⚽</div>
+            <div class="kpi-sub">SEZON DEVAM EDİYOR</div>
         </div>
         """, unsafe_allow_html=True)
     with c2:
         st.markdown("""
-        <div class="kpi-card red-border">
-            <div class="kpi-title">Sıradaki Maç</div>
-            <div class="kpi-value" style="font-size: 1.8rem;">BJK - FB</div>
-            <div style="color: #E30613; font-size: 0.9rem;">📅 07.12.2024 - 20:00</div>
-            <div class="kpi-icon">🎫</div>
+        <div class="kpi-card">
+            <div class="kpi-title">SIRADAKİ MAÇ</div>
+            <div class="kpi-value" style="font-size:1.8rem;">BJK - FB</div>
+            <div class="kpi-sub">📅 07.12.2024 - 20:00</div>
         </div>
         """, unsafe_allow_html=True)
     with c3:
         st.markdown("""
-        <div class="kpi-card gray-border">
-            <div class="kpi-title">Bekleyen Rapor</div>
+        <div class="kpi-card">
+            <div class="kpi-title">BEKLEYEN RAPOR</div>
             <div class="kpi-value">3</div>
-            <div style="color: #666; font-size: 0.9rem;">📥 Onay Bekliyor</div>
-            <div class="kpi-icon">📊</div>
+            <div class="kpi-sub">📥 ONAY BEKLİYOR</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -342,64 +341,65 @@ def page_dashboard():
     # Alt Bölüm
     col_l, col_r = st.columns([2, 1])
     with col_l:
-        st.markdown('<div class="content-box"><h3>📢 Duyurular & Bildirimler</h3><hr>', unsafe_allow_html=True)
-        st.info("ℹ️ Kombine yenileme dönemi raporlarının Cuma günü mesai bitimine kadar sisteme yüklenmesi gerekmektedir.")
-        st.warning("⚠️ Kuzey Tribünü turnike sistemlerinde yapılacak bakım nedeniyle verilerde gecikme olabilir.")
+        st.markdown('<div class="content-box"><h3>📢 Duyurular</h3><hr style="border-color:#333;">', unsafe_allow_html=True)
+        st.info("ℹ️ Kombine yenileme raporları Cuma gününe kadar yüklenmelidir.")
+        st.warning("⚠️ Kuzey Tribünü turnike bakım çalışması devam etmektedir.")
         st.markdown('</div>', unsafe_allow_html=True)
         
     with col_r:
-        st.markdown('<div class="content-box"><h3>🔗 Hızlı Erişim</h3><hr>', unsafe_allow_html=True)
+        st.markdown('<div class="content-box"><h3>🔗 Hızlı Erişim</h3><hr style="border-color:#333;">', unsafe_allow_html=True)
         st.button("🎫 Bilet Raporu Yükle")
-        st.button("🏟️ Stadyum Planını Gör")
-        st.button("📞 Destek Talebi Oluştur")
+        st.button("🏟️ Stadyum Planı")
         st.markdown('</div>', unsafe_allow_html=True)
 
 def page_bilet_analiz():
-    st.markdown('<div class="content-box"><h2>🎫 Bilet Raporlama Sistemi</h2><p>Passolig\'den alınan Excel/CSV dosyalarını yükleyerek otomatik analiz yapabilirsiniz.</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="content-box"><h2>🎫 Bilet Raporlama</h2><p style="color:#aaa;">Passolig raporunu yükleyerek analiz başlatın.</p></div>', unsafe_allow_html=True)
     
     uploaded_file = st.file_uploader("", type=['xlsx', 'xls', 'csv'])
     
     if uploaded_file:
-        with st.spinner("Dosya analiz ediliyor, lütfen bekleyin..."):
-            time.sleep(1) # Yapay gecikme (animasyon hissi için)
+        with st.spinner("Analiz ediliyor..."):
+            time.sleep(1)
             df = process_data(uploaded_file)
             
         if df is not None:
-            # Veri Hazırlığı
             match_summary = df.groupby('Mac')['Adet'].sum().sort_values(ascending=False).reset_index()
             total_tickets = match_summary['Adet'].sum()
             total_matches = len(match_summary)
             top_match = match_summary.iloc[0]
 
-            # İstatistik Kartları (HTML)
+            # KPI (Özet)
             st.markdown(f"""
-            <div style="display: flex; gap: 20px; margin-bottom: 30px;">
-                <div class="kpi-card" style="flex:1; border-left-color: #000;">
-                    <div class="kpi-title">Analiz Edilen Maç</div>
-                    <div class="kpi-value">{total_matches}</div>
+            <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+                <div class="kpi-card" style="flex:1;">
+                    <div class="kpi-title">ANALİZ EDİLEN</div>
+                    <div class="kpi-value">{total_matches} Maç</div>
                 </div>
-                <div class="kpi-card" style="flex:1; border-left-color: #E30613;">
-                    <div class="kpi-title">Toplam Bedelsiz Bilet</div>
+                <div class="kpi-card" style="flex:1;">
+                    <div class="kpi-title">TOPLAM BİLET</div>
                     <div class="kpi-value">{total_tickets:,.0f}</div>
                 </div>
-                <div class="kpi-card" style="flex:1; border-left-color: #555;">
-                    <div class="kpi-title">Rekor Maç</div>
-                    <div class="kpi-value" style="font-size: 1.5rem;">{top_match['Mac'][:15]}...</div>
-                    <div style="color: #E30613; font-weight:bold;">{top_match['Adet']:,.0f} Adet</div>
+                <div class="kpi-card" style="flex:1;">
+                    <div class="kpi-title">REKOR</div>
+                    <div class="kpi-value" style="font-size:1.5rem;">{top_match['Mac'][:15]}...</div>
+                    <div class="kpi-sub">{top_match['Adet']:,.0f} Adet</div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
             
             # Grafikler
             st.markdown('<div class="content-box">', unsafe_allow_html=True)
-            tab1, tab2 = st.tabs(["📊 Genel Analiz", "🔍 Maç Detayı & İndir"])
+            tab1, tab2 = st.tabs(["📊 GENEL ANALİZ", "🔍 MAÇ DETAYI"])
             
             with tab1:
+                # Plotly Dark Theme
                 fig = px.bar(match_summary, x='Mac', y='Adet', text_auto='.2s', 
                              color='Adet', color_continuous_scale=['#333333', '#E30613'])
                 fig.update_layout(
-                    title="Maç Bazlı Dağılım",
-                    plot_bgcolor='white',
+                    title="Maç Bazlı Bilet Dağılımı",
+                    template="plotly_dark", # Koyu tema
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
                     height=500,
                     xaxis_title=None,
                     yaxis_title="Bilet Sayısı"
@@ -424,13 +424,19 @@ def page_bilet_analiz():
                 with col_gr:
                     if selected_match:
                         fig_det = px.bar(match_detail, x='Adet', y='Tribun', orientation='h', text_auto=True, 
-                                         color_discrete_sequence=['#1a1a1a'])
-                        fig_det.update_layout(title=f"{selected_match} - Tribün Dağılımı", height=600)
+                                         color_discrete_sequence=['#E30613'])
+                        fig_det.update_layout(
+                            title=f"{selected_match} - Tribün Dağılımı", 
+                            template="plotly_dark",
+                            plot_bgcolor='rgba(0,0,0,0)',
+                            paper_bgcolor='rgba(0,0,0,0)',
+                            height=600
+                        )
                         st.plotly_chart(fig_det, use_container_width=True)
             
             st.markdown('</div>', unsafe_allow_html=True)
     else:
-        st.info("👆 Başlamak için lütfen rapor dosyasını yükleyin.")
+        st.info("👆 Başlamak için yukarıdaki alana rapor dosyasını sürükleyin.")
 
 def page_stadyum_plani():
     st.markdown('<div class="content-box"><h2>🏟️ Tüpraş Stadyumu Planı</h2></div>', unsafe_allow_html=True)
@@ -438,6 +444,7 @@ def page_stadyum_plani():
     col_img, col_data = st.columns([2, 1])
     with col_img:
         st.markdown('<div class="content-box">', unsafe_allow_html=True)
+        # Placeholder Resim
         st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Vodafone_Arena_nuit.jpg/1200px-Vodafone_Arena_nuit.jpg", use_container_width=True)
         st.caption("Stadyum Genel Görünüm")
         st.markdown('</div>', unsafe_allow_html=True)
@@ -445,36 +452,35 @@ def page_stadyum_plani():
     with col_data:
         st.markdown("""
         <div class="content-box">
-            <h4 style="color:#E30613;">Kapasite Bilgileri</h4>
-            <ul style="list-style-type: none; padding: 0;">
-                <li style="padding: 10px 0; border-bottom: 1px solid #eee;"><b>Toplam Kapasite:</b> 42.590</li>
-                <li style="padding: 10px 0; border-bottom: 1px solid #eee;"><b>Doğu Tribünü:</b> 12.000</li>
-                <li style="padding: 10px 0; border-bottom: 1px solid #eee;"><b>Batı Tribünü:</b> 10.500</li>
-                <li style="padding: 10px 0; border-bottom: 1px solid #eee;"><b>Kuzey Kale Arkası:</b> 10.045</li>
+            <h4 style="color:#E30613 !important;">Kapasite Bilgileri</h4>
+            <ul style="list-style-type: none; padding: 0; color:#ddd;">
+                <li style="padding: 10px 0; border-bottom: 1px solid #333;"><b>Toplam Kapasite:</b> 42.590</li>
+                <li style="padding: 10px 0; border-bottom: 1px solid #333;"><b>Doğu Tribünü:</b> 12.000</li>
+                <li style="padding: 10px 0; border-bottom: 1px solid #333;"><b>Batı Tribünü:</b> 10.500</li>
+                <li style="padding: 10px 0; border-bottom: 1px solid #333;"><b>Kuzey Kale Arkası:</b> 10.045</li>
                 <li style="padding: 10px 0;"><b>Güney Kale Arkası:</b> 10.045</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
 
 def page_musteri_hizmetleri():
-    st.markdown('<div class="content-box"><h2>📞 Müşteri Hizmetleri & Notlar</h2></div>', unsafe_allow_html=True)
+    st.markdown('<div class="content-box"><h2>📞 Destek & Notlar</h2></div>', unsafe_allow_html=True)
     
-    with st.expander("➕ Yeni Not Ekle", expanded=True):
+    with st.expander("➕ Yeni Not Ekle"):
         with st.form("not_form"):
             c1, c2 = st.columns(2)
             with c1: konu = st.text_input("Konu")
-            with c2: personel = st.text_input("İlgili Personel")
-            not_icerik = st.text_area("Not Detayı")
-            if st.form_submit_button("Kaydet"):
-                st.success("Not başarıyla kaydedildi.")
+            with c2: personel = st.text_input("Personel")
+            not_icerik = st.text_area("Not")
+            if st.form_submit_button("KAYDET"):
+                st.success("Kaydedildi.")
     
     st.markdown("### Son Kayıtlar")
-    # Örnek Dataframe
     df_logs = pd.DataFrame({
-        'Tarih': ['05.12.2024', '04.12.2024', '03.12.2024'],
-        'Personel': ['Ahmet Y.', 'Mehmet K.', 'Ayşe D.'],
-        'Konu': ['VIP Kombine İadesi', 'Passolig Sorunu', 'Engelli Bilet Başvurusu'],
-        'Durum': ['🟢 Çözüldü', '🟡 Beklemede', '🟢 Çözüldü']
+        'Tarih': ['05.12.2024', '04.12.2024'],
+        'Personel': ['Ahmet Y.', 'Mehmet K.'],
+        'Konu': ['VIP İade', 'Passolig Sorunu'],
+        'Durum': ['🟢 Çözüldü', '🟡 Beklemede']
     })
     st.dataframe(df_logs, use_container_width=True, hide_index=True)
 
@@ -482,10 +488,16 @@ def page_musteri_hizmetleri():
 # 6. SIDEBAR & NAVİGASYON
 # -------------------------------------------------------------------------
 with st.sidebar:
-    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Besiktas_jk.svg/240px-Besiktas_jk.svg.png", width=140)
+    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Besiktas_jk.svg/240px-Besiktas_jk.svg.png", width=100)
     st.markdown("<br>", unsafe_allow_html=True)
     
-    st.markdown(f"<div style='background:rgba(255,255,255,0.1); padding:10px; border-radius:10px; margin-bottom:20px;'><small>Aktif Kullanıcı:</small><br><b>{st.session_state.get('email_to_verify', 'Yönetici')}</b></div>", unsafe_allow_html=True)
+    user_email = st.session_state.get('email_to_verify', 'Yönetici')
+    st.markdown(f"""
+    <div style='background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; border-left:3px solid #E30613; margin-bottom:20px;'>
+        <small style='color:#888;'>Aktif Kullanıcı:</small><br>
+        <b style='color:white; font-size:0.9rem;'>{user_email}</b>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Menü
     selected_page = st.radio(
@@ -494,8 +506,8 @@ with st.sidebar:
         label_visibility="collapsed"
     )
     
-    st.markdown("<br><br><br>", unsafe_allow_html=True)
-    if st.button("GÜVENLİ ÇIKIŞ"):
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    if st.button("ÇIKIŞ YAP"):
         st.session_state["logged_in"] = False
         st.session_state["login_step"] = "email"
         st.rerun()
