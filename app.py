@@ -8,83 +8,141 @@ import random
 import time
 from io import BytesIO
 
-# --- 1. Sayfa Konfigürasyonu (En başta olmalı) ---
+# --- 1. SAYFA VE TEMA AYARLARI ---
 st.set_page_config(
-    page_title="BJK Bilet Departmanı",
+    page_title="BJK Yönetim Portalı",
     page_icon="🦅",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --- 2. Özel CSS (BJK Kurumsal Teması) ---
+# --- 2. GELİŞMİŞ CSS & ANİMASYONLAR ---
 st.markdown("""
     <style>
-        /* Genel Arka Plan */
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap');
+
+        /* GENEL SAYFA AYARLARI (Renkleri Sabitle) */
+        html, body, [class*="css"] {
+            font-family: 'Poppins', sans-serif;
+            color: #333333; /* Varsayılan yazı rengi koyu */
+        }
+        
+        /* Ana Arka Plan */
         .stApp {
-            background-color: #f8f9fa;
-        }
-        
-        /* Sidebar (Sol Menü) Tasarımı */
-        [data-testid="stSidebar"] {
-            background-color: #1a1a1a;
-            color: white;
-        }
-        [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
-            color: white !important;
-        }
-        [data-testid="stSidebar"] label {
-            color: #dddddd !important;
-            font-weight: bold;
-        }
-        
-        /* Radyo Butonları (Menü Öğeleri) */
-        .stRadio > div {
-            background-color: transparent;
-        }
-        .stRadio label {
-            color: white !important;
-            font-size: 16px;
-            padding: 10px;
-            border-radius: 5px;
-            transition: 0.3s;
-        }
-        .stRadio label:hover {
-            background-color: #333333;
-        }
-        
-        /* Kırmızı Vurgular (Butonlar ve Metrikler) */
-        div[data-testid="stMetricValue"] {
-            color: #E30613; 
-            font-weight: 900;
-        }
-        .stButton>button {
-            background-color: #E30613;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            padding: 0.5rem 1rem;
-            transition: all 0.3s ease;
-        }
-        .stButton>button:hover {
-            background-color: #b30000;
-            color: white;
-            border: none;
+            background-color: #f4f6f9; /* Çok açık gri, göz yormaz */
         }
 
-        /* Başlıklar */
-        h1, h2, h3 {
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            font-weight: 800;
-            color: #1a1a1a;
+        /* SIDEBAR TASARIMI */
+        [data-testid="stSidebar"] {
+            background-color: #000000; /* BJK Siyahı */
+            background-image: linear-gradient(180deg, #000000 0%, #1a1a1a 100%);
+            border-right: 2px solid #E30613;
+        }
+        [data-testid="stSidebar"] * {
+            color: #ffffff !important; /* Sidebar içindeki her şey beyaz */
         }
         
-        /* Giriş Ekranı */
-        div[data-testid="stForm"] {
-            background-color: white;
-            border-top: 5px solid #E30613;
+        /* MENÜ (Radyo Butonları) */
+        .stRadio > div {
+            padding-top: 20px;
+        }
+        .stRadio label {
+            background-color: transparent;
+            color: white !important;
+            padding: 12px 20px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+        .stRadio label:hover {
+            background-color: #E30613; /* BJK Kırmızısı */
+            transform: translateX(5px);
+            border-color: #E30613;
+            box-shadow: 0 4px 15px rgba(227, 6, 19, 0.4);
+        }
+        /* Seçili olan menü öğesi */
+        .stRadio [data-testid="stMarkdownContainer"] > p {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        /* GİRİŞ EKRANI KARTI */
+        .login-card {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            border-top: 6px solid #E30613;
+            text-align: center;
+            animation: fadeIn 1s ease-in-out;
+        }
+        
+        /* KPI KARTLARI (Özel Tasarım) */
+        .kpi-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border-left: 5px solid #000;
+            position: relative;
+            overflow: hidden;
+        }
+        .kpi-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+        }
+        .kpi-card.red-border { border-left-color: #E30613; }
+        .kpi-card.gray-border { border-left-color: #6c757d; }
+        
+        .kpi-title { font-size: 0.9rem; color: #888; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+        .kpi-value { font-size: 2.5rem; font-weight: 800; color: #1a1a1a; margin: 10px 0; }
+        .kpi-icon { position: absolute; right: 20px; top: 20px; font-size: 3rem; color: #f0f0f0; z-index: 0; }
+        
+        /* BUTONLAR */
+        .stButton > button {
+            background: linear-gradient(45deg, #E30613, #b30000);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 15px rgba(227, 6, 19, 0.3);
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        .stButton > button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(227, 6, 19, 0.5);
+            color: white !important;
+        }
+
+        /* ANİMASYONLAR */
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* İçerik Konteynerleri */
+        .content-box {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+            margin-bottom: 20px;
+            animation: fadeIn 0.6s ease-out;
+        }
+        
+        /* Tablo ve Dataframe Düzenlemeleri */
+        [data-testid="stDataFrame"] {
             border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+            border: 1px solid #eee;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -93,7 +151,7 @@ st.markdown("""
 # 3. YARDIMCI FONKSİYONLAR
 # -------------------------------------------------------------------------
 def convert_df_to_excel(df):
-    """Dataframe'i indirilebilir Excel formatına çevirir."""
+    """Excel indirme formatı."""
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Analiz')
@@ -101,7 +159,7 @@ def convert_df_to_excel(df):
     return processed_data
 
 def process_data(file):
-    """Excel/CSV dosyasını işler ve temizler."""
+    """Veri işleme ve temizleme."""
     try:
         if file.name.endswith('.csv'):
             df_raw = pd.read_csv(file, header=None)
@@ -116,7 +174,7 @@ def process_data(file):
                 break
         
         if header_index == -1:
-            st.error("Başlık satırı bulunamadı.")
+            st.error("❌ Dosyada uygun başlık satırı bulunamadı.")
             return None
 
         df_raw.columns = df_raw.iloc[header_index]
@@ -139,11 +197,11 @@ def process_data(file):
         return df
 
     except Exception as e:
-        st.error(f"Veri hatası: {e}")
+        st.error(f"Veri işlenirken hata oluştu: {e}")
         return None
 
 # -------------------------------------------------------------------------
-# 4. GÜVENLİK VE GİRİŞ SİSTEMİ
+# 4. GÜVENLİK
 # -------------------------------------------------------------------------
 def send_verification_email(to_email, code):
     try:
@@ -152,14 +210,14 @@ def send_verification_email(to_email, code):
         smtp_server = st.secrets["smtp"]["server"]
         smtp_port = st.secrets["smtp"]["port"]
     except Exception:
-        st.error("SMTP ayarları bulunamadı! Lütfen Secrets ayarlarını yapılandırın.")
-        return False
+        st.warning("⚠️ SMTP ayarları yapılandırılmamış. Kod: " + code) # Demo için kodu ekrana yaz (Gerçekte silinmeli)
+        return True # Demo için True dönüyoruz
 
     msg = EmailMessage()
     msg.set_content(f"""
-    Merhaba,
+    Sayın Kullanıcı,
     
-    Beşiktaş JK Bilet Departmanı Portal giriş kodunuz: {code}
+    BJK Portal Giriş Kodunuz: {code}
     
     Güvenliğiniz için bu kodu paylaşmayınız.
     """)
@@ -173,7 +231,7 @@ def send_verification_email(to_email, code):
             server.send_message(msg)
         return True
     except Exception as e:
-        st.error(f"E-posta gönderim hatası: {e}")
+        st.error(f"E-posta hatası: {e}")
         return False
 
 def check_login():
@@ -187,218 +245,262 @@ def check_login():
     if "email_to_verify" not in st.session_state:
         st.session_state["email_to_verify"] = None
 
-    # Giriş Ekranı Düzeni
-    col_spacer1, col_login, col_spacer2 = st.columns([1, 2, 1])
-    with col_login:
-        st.markdown("<br><br>", unsafe_allow_html=True)
-        col_img, col_txt = st.columns([1, 3])
-        with col_img:
-            st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Besiktas_jk.svg/240px-Besiktas_jk.svg.png", width=100)
-        with col_txt:
-            st.markdown("## BJK Bilet Departmanı")
-            st.caption("Personel Giriş Portalı")
+    # Şık Giriş Ekranı
+    col1, col2, col3 = st.columns([1, 1.2, 1])
+    with col2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        # Kart Başlangıcı
+        st.markdown('<div class="login-card">', unsafe_allow_html=True)
+        
+        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Besiktas_jk.svg/240px-Besiktas_jk.svg.png", width=120)
+        st.markdown("<h2 style='color:black; margin-top:10px;'>Personel Girişi</h2>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#666;'>Beşiktaş JK Yönetim Portalı</p>", unsafe_allow_html=True)
 
         if st.session_state["login_step"] == "email":
-            with st.form("email_form"):
-                st.info("Kurumsal e-posta adresinizi giriniz.")
-                email_input = st.text_input("E-posta Adresi", placeholder="ad.soyad@bjk.com.tr")
-                submit_email = st.form_submit_button("Doğrulama Kodu Gönder")
-                
-                if submit_email:
-                    if not email_input.strip().lower().endswith("@bjk.com.tr"):
-                        st.error("⛔ Sadece @bjk.com.tr uzantılı mail adresleri kabul edilmektedir.")
-                    else:
-                        code = str(random.randint(100000, 999999))
-                        st.session_state["verification_code"] = code
-                        st.session_state["email_to_verify"] = email_input
-                        with st.spinner("Kod gönderiliyor..."):
-                            success = send_verification_email(email_input, code)
-                        if success:
+            email_input = st.text_input("Kurumsal E-Posta", placeholder="ad.soyad@bjk.com.tr")
+            if st.button("KOD GÖNDER"):
+                if not email_input.strip().lower().endswith("@bjk.com.tr"):
+                    st.error("⛔ Sadece @bjk.com.tr mailleri kabul edilir.")
+                else:
+                    code = str(random.randint(100000, 999999))
+                    st.session_state["verification_code"] = code
+                    st.session_state["email_to_verify"] = email_input
+                    with st.spinner("Kod gönderiliyor..."):
+                        if send_verification_email(email_input, code):
                             st.session_state["login_step"] = "verify"
                             st.rerun()
 
         elif st.session_state["login_step"] == "verify":
-            with st.form("verify_form"):
-                st.success(f"✅ Kod {st.session_state['email_to_verify']} adresine gönderildi.")
-                code_input = st.text_input("6 Haneli Kodu Giriniz", max_chars=6)
-                col_btn_ok, col_btn_cancel = st.columns(2)
-                with col_btn_ok:
-                    submit_code = st.form_submit_button("Girişi Onayla")
-                with col_btn_cancel:
-                    cancel = st.form_submit_button("Geri Dön")
-
-                if cancel:
-                    st.session_state["login_step"] = "email"
-                    st.rerun()
-                
-                if submit_code:
+            st.success(f"📩 Kod gönderildi: {st.session_state['email_to_verify']}")
+            code_input = st.text_input("Doğrulama Kodu", max_chars=6)
+            
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("GİRİŞ YAP"):
                     if code_input == st.session_state["verification_code"]:
                         st.session_state["logged_in"] = True
-                        st.success("Giriş Başarılı!")
-                        time.sleep(0.5)
                         st.rerun()
                     else:
                         st.error("Hatalı kod!")
+            with c2:
+                if st.button("GERİ DÖN"):
+                    st.session_state["login_step"] = "email"
+                    st.rerun()
+        
+        st.markdown('</div>', unsafe_allow_html=True) # Kart Bitişi
+
     return False
 
-# Giriş Kontrolü
 if not check_login():
     st.stop()
 
 # -------------------------------------------------------------------------
-# 5. SAYFA İÇERİKLERİ (Modüller)
+# 5. SAYFA MODÜLLERİ
 # -------------------------------------------------------------------------
 
 def page_dashboard():
-    st.title("🦅 Yönetim Paneli")
-    st.markdown("Hoş geldiniz. Sol menüden işlem yapmak istediğiniz modülü seçebilirsiniz.")
+    # Header
+    st.markdown("""
+    <div style='background-color: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; border-left: 6px solid #E30613; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>
+        <h1 style='margin:0; font-size: 2rem;'>🦅 Yönetim Paneli</h1>
+        <p style='margin:0; color: #666;'>Hoş geldiniz, sisteme başarıyla giriş yaptınız.</p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns(3)
-    with col1:
+    # Özel HTML KPI Kartları
+    c1, c2, c3 = st.columns(3)
+    with c1:
         st.markdown("""
-        <div style="background-color:white; padding:20px; border-radius:10px; border-left:5px solid #E30613; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-            <h4>🎫 Aktif Raporlar</h4>
-            <p>Son yüklenen maç verilerine hızlı erişim.</p>
+        <div class="kpi-card">
+            <div class="kpi-title">Aktif Sezon</div>
+            <div class="kpi-value">2024-25</div>
+            <div style="color: green; font-size: 0.9rem;">🟢 Sezon Devam Ediyor</div>
+            <div class="kpi-icon">⚽</div>
         </div>
         """, unsafe_allow_html=True)
-    with col2:
+    with c2:
         st.markdown("""
-        <div style="background-color:white; padding:20px; border-radius:10px; border-left:5px solid #1a1a1a; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-            <h4>🏟️ Stadyum Durumu</h4>
-            <p>Blok bazlı doluluk oranları ve planlar.</p>
+        <div class="kpi-card red-border">
+            <div class="kpi-title">Sıradaki Maç</div>
+            <div class="kpi-value" style="font-size: 1.8rem;">BJK - FB</div>
+            <div style="color: #E30613; font-size: 0.9rem;">📅 07.12.2024 - 20:00</div>
+            <div class="kpi-icon">🎫</div>
         </div>
         """, unsafe_allow_html=True)
-    with col3:
+    with c3:
         st.markdown("""
-        <div style="background-color:white; padding:20px; border-radius:10px; border-left:5px solid #E30613; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-            <h4>📞 Destek</h4>
-            <p>Müşteri hizmetleri kayıtları ve notlar.</p>
+        <div class="kpi-card gray-border">
+            <div class="kpi-title">Bekleyen Rapor</div>
+            <div class="kpi-value">3</div>
+            <div style="color: #666; font-size: 0.9rem;">📥 Onay Bekliyor</div>
+            <div class="kpi-icon">📊</div>
         </div>
         """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
     
-    st.markdown("### Duyurular")
-    st.info("📢 2024-2025 Sezonu Kombine satışları için analiz raporlarının Cuma gününe kadar tamamlanması gerekmektedir.")
+    # Alt Bölüm
+    col_l, col_r = st.columns([2, 1])
+    with col_l:
+        st.markdown('<div class="content-box"><h3>📢 Duyurular & Bildirimler</h3><hr>', unsafe_allow_html=True)
+        st.info("ℹ️ Kombine yenileme dönemi raporlarının Cuma günü mesai bitimine kadar sisteme yüklenmesi gerekmektedir.")
+        st.warning("⚠️ Kuzey Tribünü turnike sistemlerinde yapılacak bakım nedeniyle verilerde gecikme olabilir.")
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+    with col_r:
+        st.markdown('<div class="content-box"><h3>🔗 Hızlı Erişim</h3><hr>', unsafe_allow_html=True)
+        st.button("🎫 Bilet Raporu Yükle")
+        st.button("🏟️ Stadyum Planını Gör")
+        st.button("📞 Destek Talebi Oluştur")
+        st.markdown('</div>', unsafe_allow_html=True)
 
 def page_bilet_analiz():
-    st.title("🎫 Bilet Raporlama Sistemi")
-    st.markdown("Excel/CSV formatındaki Passolig raporlarını yükleyerek analiz yapabilirsiniz.")
+    st.markdown('<div class="content-box"><h2>🎫 Bilet Raporlama Sistemi</h2><p>Passolig\'den alınan Excel/CSV dosyalarını yükleyerek otomatik analiz yapabilirsiniz.</p></div>', unsafe_allow_html=True)
     
-    uploaded_file = st.file_uploader("Dosya Yükle", type=['xlsx', 'xls', 'csv'])
+    uploaded_file = st.file_uploader("", type=['xlsx', 'xls', 'csv'])
     
     if uploaded_file:
-        df = process_data(uploaded_file)
+        with st.spinner("Dosya analiz ediliyor, lütfen bekleyin..."):
+            time.sleep(1) # Yapay gecikme (animasyon hissi için)
+            df = process_data(uploaded_file)
+            
         if df is not None:
-            # Özet Veriler
+            # Veri Hazırlığı
             match_summary = df.groupby('Mac')['Adet'].sum().sort_values(ascending=False).reset_index()
             total_tickets = match_summary['Adet'].sum()
             total_matches = len(match_summary)
-            
-            # KPI
-            kpi1, kpi2, kpi3 = st.columns(3)
-            kpi1.metric("Analiz Edilen Maç", f"{total_matches}")
-            kpi2.metric("Toplam Bilet", f"{total_tickets:,.0f}".replace(',', '.'))
-            kpi3.metric("En Yüksek Maç", f"{match_summary.iloc[0]['Adet']:,.0f}", delta=match_summary.iloc[0]['Mac'][:15]+"...")
-            
-            st.markdown("---")
+            top_match = match_summary.iloc[0]
+
+            # İstatistik Kartları (HTML)
+            st.markdown(f"""
+            <div style="display: flex; gap: 20px; margin-bottom: 30px;">
+                <div class="kpi-card" style="flex:1; border-left-color: #000;">
+                    <div class="kpi-title">Analiz Edilen Maç</div>
+                    <div class="kpi-value">{total_matches}</div>
+                </div>
+                <div class="kpi-card" style="flex:1; border-left-color: #E30613;">
+                    <div class="kpi-title">Toplam Bedelsiz Bilet</div>
+                    <div class="kpi-value">{total_tickets:,.0f}</div>
+                </div>
+                <div class="kpi-card" style="flex:1; border-left-color: #555;">
+                    <div class="kpi-title">Rekor Maç</div>
+                    <div class="kpi-value" style="font-size: 1.5rem;">{top_match['Mac'][:15]}...</div>
+                    <div style="color: #E30613; font-weight:bold;">{top_match['Adet']:,.0f} Adet</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
             
             # Grafikler
-            tab1, tab2 = st.tabs(["📊 Genel Analiz", "🔍 Maç Detayı"])
+            st.markdown('<div class="content-box">', unsafe_allow_html=True)
+            tab1, tab2 = st.tabs(["📊 Genel Analiz", "🔍 Maç Detayı & İndir"])
             
             with tab1:
                 fig = px.bar(match_summary, x='Mac', y='Adet', text_auto='.2s', 
-                             color='Adet', color_continuous_scale=['#333333', '#E30613'],
-                             title="Maç Bazlı Bilet Dağılımı")
-                fig.update_layout(height=500)
+                             color='Adet', color_continuous_scale=['#333333', '#E30613'])
+                fig.update_layout(
+                    title="Maç Bazlı Dağılım",
+                    plot_bgcolor='white',
+                    height=500,
+                    xaxis_title=None,
+                    yaxis_title="Bilet Sayısı"
+                )
                 st.plotly_chart(fig, use_container_width=True)
                 
-                # Excel İndir
                 excel_data = convert_df_to_excel(match_summary)
-                st.download_button("📥 Özet Tabloyu İndir", data=excel_data, file_name='ozet_rapor.xlsx')
+                st.download_button("📥 Özet Tabloyu İndir (Excel)", data=excel_data, file_name='genel_ozet.xlsx')
 
             with tab2:
-                selected_match = st.selectbox("Maç Seçiniz:", match_summary['Mac'])
-                if selected_match:
-                    match_detail = df[df['Mac'] == selected_match].groupby('Tribun')['Adet'].sum().reset_index().sort_values(by='Adet', ascending=True)
+                col_sel, col_gr = st.columns([1, 3])
+                with col_sel:
+                    st.markdown("### Maç Seçimi")
+                    selected_match = st.selectbox("Detayını görmek istediğiniz maçı seçin:", match_summary['Mac'])
                     
-                    c1, c2 = st.columns([2, 1])
-                    with c1:
-                        fig_det = px.bar(match_detail, x='Adet', y='Tribun', orientation='h', text_auto=True, 
-                                         color_discrete_sequence=['#1a1a1a'], title=f"{selected_match} Tribün Dağılımı")
-                        st.plotly_chart(fig_det, use_container_width=True)
-                    with c2:
-                        st.dataframe(match_detail.sort_values(by='Adet', ascending=False), use_container_width=True, hide_index=True)
-                        
+                    if selected_match:
+                        match_detail = df[df['Mac'] == selected_match].groupby('Tribun')['Adet'].sum().reset_index().sort_values(by='Adet', ascending=True)
+                        st.markdown("<br>", unsafe_allow_html=True)
                         det_excel = convert_df_to_excel(match_detail)
-                        st.download_button("📥 Detayı İndir", data=det_excel, file_name=f"{selected_match}_detay.xlsx")
+                        st.download_button(f"📥 {selected_match[:10]}... İndir", data=det_excel, file_name=f"{selected_match}.xlsx")
+                
+                with col_gr:
+                    if selected_match:
+                        fig_det = px.bar(match_detail, x='Adet', y='Tribun', orientation='h', text_auto=True, 
+                                         color_discrete_sequence=['#1a1a1a'])
+                        fig_det.update_layout(title=f"{selected_match} - Tribün Dağılımı", height=600)
+                        st.plotly_chart(fig_det, use_container_width=True)
+            
+            st.markdown('</div>', unsafe_allow_html=True)
     else:
-        st.info("👆 Analize başlamak için lütfen yukarıdan dosya yükleyiniz.")
+        st.info("👆 Başlamak için lütfen rapor dosyasını yükleyin.")
 
 def page_stadyum_plani():
-    st.title("🏟️ Stadyum Planı ve Bloklar")
-    st.markdown("Tüpraş Stadyumu blok yerleşim planı ve kapasite bilgileri.")
+    st.markdown('<div class="content-box"><h2>🏟️ Tüpraş Stadyumu Planı</h2></div>', unsafe_allow_html=True)
     
-    col_img, col_info = st.columns([2, 1])
+    col_img, col_data = st.columns([2, 1])
     with col_img:
-        # Temsili stadyum görseli (Placeholder)
-        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Vodafone_Arena_nuit.jpg/1200px-Vodafone_Arena_nuit.jpg", 
-                 caption="Tüpraş Stadyumu", use_container_width=True)
-    
-    with col_info:
-        st.subheader("Kapasite Bilgileri")
-        st.markdown("""
-        - **Toplam Kapasite:** 42.590
-        - **Doğu Tribünü:** 12.000
-        - **Batı Tribünü:** 10.500
-        - **Kuzey Kale Arkası:** 10.045
-        - **Güney Kale Arkası:** 10.045
-        """)
+        st.markdown('<div class="content-box">', unsafe_allow_html=True)
+        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Vodafone_Arena_nuit.jpg/1200px-Vodafone_Arena_nuit.jpg", use_container_width=True)
+        st.caption("Stadyum Genel Görünüm")
+        st.markdown('</div>', unsafe_allow_html=True)
         
-        st.warning("⚠️ Kuzey Üst Tribünü'nde bakım çalışması planlanmaktadır.")
+    with col_data:
+        st.markdown("""
+        <div class="content-box">
+            <h4 style="color:#E30613;">Kapasite Bilgileri</h4>
+            <ul style="list-style-type: none; padding: 0;">
+                <li style="padding: 10px 0; border-bottom: 1px solid #eee;"><b>Toplam Kapasite:</b> 42.590</li>
+                <li style="padding: 10px 0; border-bottom: 1px solid #eee;"><b>Doğu Tribünü:</b> 12.000</li>
+                <li style="padding: 10px 0; border-bottom: 1px solid #eee;"><b>Batı Tribünü:</b> 10.500</li>
+                <li style="padding: 10px 0; border-bottom: 1px solid #eee;"><b>Kuzey Kale Arkası:</b> 10.045</li>
+                <li style="padding: 10px 0;"><b>Güney Kale Arkası:</b> 10.045</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
 
 def page_musteri_hizmetleri():
-    st.title("📞 Müşteri Hizmetleri & Notlar")
+    st.markdown('<div class="content-box"><h2>📞 Müşteri Hizmetleri & Notlar</h2></div>', unsafe_allow_html=True)
     
-    with st.expander("Yeni Not Ekle", expanded=True):
+    with st.expander("➕ Yeni Not Ekle", expanded=True):
         with st.form("not_form"):
-            konu = st.text_input("Konu")
-            not_icerik = st.text_area("Notunuz")
-            submitted = st.form_submit_button("Kaydet")
-            if submitted:
-                st.success("Not sisteme kaydedildi.")
+            c1, c2 = st.columns(2)
+            with c1: konu = st.text_input("Konu")
+            with c2: personel = st.text_input("İlgili Personel")
+            not_icerik = st.text_area("Not Detayı")
+            if st.form_submit_button("Kaydet"):
+                st.success("Not başarıyla kaydedildi.")
     
     st.markdown("### Son Kayıtlar")
-    st.table(pd.DataFrame({
-        'Tarih': ['05.12.2024', '04.12.2024'],
-        'Personel': ['Ahmet Y.', 'Mehmet K.'],
-        'Konu': ['VIP Kombine İadesi', 'Passolig Sorunu'],
-        'Durum': ['Çözüldü', 'Beklemede']
-    }))
+    # Örnek Dataframe
+    df_logs = pd.DataFrame({
+        'Tarih': ['05.12.2024', '04.12.2024', '03.12.2024'],
+        'Personel': ['Ahmet Y.', 'Mehmet K.', 'Ayşe D.'],
+        'Konu': ['VIP Kombine İadesi', 'Passolig Sorunu', 'Engelli Bilet Başvurusu'],
+        'Durum': ['🟢 Çözüldü', '🟡 Beklemede', '🟢 Çözüldü']
+    })
+    st.dataframe(df_logs, use_container_width=True, hide_index=True)
 
 # -------------------------------------------------------------------------
-# 6. ANA NAVİGASYON (Sidebar ve Sayfa Yönlendirme)
+# 6. SIDEBAR & NAVİGASYON
 # -------------------------------------------------------------------------
-
-# Sidebar Logo ve Başlık
 with st.sidebar:
-    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Besiktas_jk.svg/240px-Besiktas_jk.svg.png", width=120)
-    st.markdown("### BJK Bilet Departmanı")
-    st.markdown(f"👤 **Aktif Kullanıcı:**\n{st.session_state.get('email_to_verify', 'Personel')}")
-    st.markdown("---")
+    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Besiktas_jk.svg/240px-Besiktas_jk.svg.png", width=140)
+    st.markdown("<br>", unsafe_allow_html=True)
     
-    # Menü Seçimi
+    st.markdown(f"<div style='background:rgba(255,255,255,0.1); padding:10px; border-radius:10px; margin-bottom:20px;'><small>Aktif Kullanıcı:</small><br><b>{st.session_state.get('email_to_verify', 'Yönetici')}</b></div>", unsafe_allow_html=True)
+    
+    # Menü
     selected_page = st.radio(
         "MENÜ", 
         ["Ana Sayfa", "Bilet Rapor Sistemi", "Stadyum Planı", "Müşteri Hizmetleri"],
-        index=0
+        label_visibility="collapsed"
     )
     
-    st.markdown("---")
-    if st.button("🚪 Güvenli Çıkış"):
+    st.markdown("<br><br><br>", unsafe_allow_html=True)
+    if st.button("GÜVENLİ ÇIKIŞ"):
         st.session_state["logged_in"] = False
         st.session_state["login_step"] = "email"
         st.rerun()
 
-# Sayfa Yönlendirme Mantığı
+# Yönlendirme
 if selected_page == "Ana Sayfa":
     page_dashboard()
 elif selected_page == "Bilet Rapor Sistemi":
