@@ -151,6 +151,12 @@ st.markdown("""
             border: 1px dashed #555;
             border-radius: 10px;
         }
+        
+        /* Expander */
+        .streamlit-expanderHeader {
+            background-color: #2d2d2d;
+            border-radius: 5px;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -199,6 +205,10 @@ def process_data(file):
              df['Adet'] = df['Adet'].astype(int)
 
         df = df[~df['Mac'].astype(str).str.contains('Toplam', case=False, na=False)]
+        
+        # Session state'e kaydet (Diğer sayfalardan erişmek için)
+        st.session_state['shared_df'] = df
+        
         return df
 
     except Exception as e:
@@ -440,26 +450,118 @@ def page_bilet_analiz():
         st.info("👆 Başlamak için yukarıdaki alana rapor dosyasını sürükleyin.")
 
 def page_stadyum_plani():
-    st.markdown('<div class="content-box"><h2>🏟️ Tüpraş Stadyumu - 3D İnteraktif Plan</h2><p style="color:#aaa;">Koltuk seçimi ve görüş açısı simülasyonu için aşağıdaki planı kullanabilirsiniz.</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="content-box"><h2>🏟️ Tüpraş Stadyumu Planları</h2></div>', unsafe_allow_html=True)
     
-    # Iframe container (Koyu Tema)
-    st.markdown("""
-        <div style="background-color: #1e1e1e; border-radius: 12px; border: 1px solid #333; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
-    """, unsafe_allow_html=True)
+    # Veri bağlantısı kontrolü
+    df_shared = st.session_state.get('shared_df')
     
-    # Harici siteyi göm
-    components.iframe("https://oturmaplaniapp.web.app/", height=800, scrolling=True)
+    tab1, tab2 = st.tabs(["🌐 3D İNTERAKTİF PLAN", "📊 CANLI DOLULUK HARİTASI"])
     
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="content-box">
-        <h4 style="color:#E30613 !important;">ℹ️ Kapasite Notları</h4>
-        <p style="color:#ccc;">Bu interaktif harita harici bir kaynaktır. Resmi blok yerleşimleri ile ufak farklılıklar gösterebilir.</p>
-    </div>
-    """, unsafe_allow_html=True)
+    # TAB 1: 3D INTERAKTİF SİTE GÖMME
+    with tab1:
+        st.markdown("""
+            <div style="background-color: #1e1e1e; border-radius: 12px; border: 1px solid #333; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin-bottom:20px;">
+        """, unsafe_allow_html=True)
+        # İframe (Tam entegre hissi verir)
+        components.iframe("https://oturmaplaniapp.web.app/", height=700, scrolling=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+        st.caption("ℹ️ Bu interaktif 3D harita harici kaynaktır ve görsel referans amaçlıdır.")
+
+    # TAB 2: NATIVE DATA MAP (Plotly)
+    with tab2:
+        if df_shared is not None:
+            st.info("💡 Bu harita, 'Bilet Rapor Sistemi' sekmesinde yüklediğiniz son veriye göre otomatik oluşturulmuştur.")
+            
+            # Veriyi Tribün Yönüne Göre Grupla
+            # Basit kelime eşleştirme ile yön bulma
+            def get_direction(tribune_name):
+                t = str(tribune_name).upper()
+                if "DOĞU" in t or "DOGU" in t: return "DOĞU"
+                if "BATI" in t: return "BATI"
+                if "KUZEY" in t: return "KUZEY"
+                if "GÜNEY" in t or "GUNEY" in t: return "GÜNEY"
+                return "DİĞER"
+
+            df_map = df_shared.copy()
+            df_map['Yön'] = df_map['Tribun'].apply(get_direction)
+            # Yön bazlı toplam bilet sayısı (Tüm maçlar toplamı veya seçili maç)
+            direction_counts = df_map.groupby('Yön')['Adet'].sum().reset_index()
+            
+            # Harita Verisi (Basit Şematik Koordinatlar)
+            # x, y koordinatları, stadyumun kuşbakışı görünümü
+            stadium_layout = {
+                "KUZEY": {"x": 0, "y": 2, "color": "#1f77b4"},
+                "GÜNEY": {"x": 0, "y": -2, "color": "#ff7f0e"},
+                "BATI": {"x": -2, "y": 0, "color": "#2ca02c"},
+                "DOĞU": {"x": 2, "y": 0, "color": "#d62728"},
+                "SAHA": {"x": 0, "y": 0, "color": "green"} # Merkez
+            }
+            
+            # Scatter Plot Oluştur
+            fig_map = go.Figure()
+            
+            # Saha (Merkez)
+            fig_map.add_trace(go.Scatter(
+                x=[0], y=[0],
+                mode='markers+text',
+                marker=dict(symbol='square', size=150, color='green', opacity=0.8),
+                text=["SAHA"],
+                textposition="middle center",
+                textfont=dict(color='white', size=14, weight='bold'),
+                hoverinfo='none',
+                name='Saha'
+            ))
+            
+            # Tribün Blokları
+            max_val = direction_counts['Adet'].max() if not direction_counts.empty else 1
+            
+            for index, row in direction_counts.iterrows():
+                direction = row['Yön']
+                count = row['Adet']
+                if direction in stadium_layout:
+                    pos = stadium_layout[direction]
+                    # Renk yoğunluğu (Kırmızıya doğru)
+                    intensity = count / max_val
+                    color_hex = f"rgba(227, 6, 19, {0.4 + (intensity * 0.6)})" # #E30613 bazlı
+                    
+                    # Şekil boyutu (Dikdörtgenimsi)
+                    size_x = 200 if direction in ["KUZEY", "GÜNEY"] else 80
+                    size_y = 80 if direction in ["KUZEY", "GÜNEY"] else 200
+                    
+                    fig_map.add_trace(go.Scatter(
+                        x=[pos["x"]], y=[pos["y"]],
+                        mode='markers+text',
+                        marker=dict(symbol='square', size=100, color=color_hex, line=dict(width=2, color='white')),
+                        text=[f"<b>{direction}</b><br>{count:,.0f}"],
+                        textposition="middle center",
+                        textfont=dict(color='white', size=12),
+                        hoverinfo='text',
+                        hovertext=f"Tribün: {direction}<br>Toplam Yükleme: {count}",
+                        name=direction
+                    ))
+
+            fig_map.update_layout(
+                title="Yüklenen Veriye Göre Tribün Yoğunluğu",
+                template="plotly_dark",
+                showlegend=False,
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-3, 3]),
+                yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-3, 3]),
+                height=600
+            )
+            
+            st.plotly_chart(fig_map, use_container_width=True)
+            
+        else:
+            st.warning("⚠️ Canlı haritayı görmek için önce 'Bilet Rapor Sistemi' sekmesinden bir dosya yükleyiniz.")
+            st.markdown("""
+            <div style="text-align:center; padding:50px; background:#1e1e1e; border-radius:10px; border:1px dashed #555;">
+                <h3 style="color:#666;">Veri Bekleniyor...</h3>
+                <p style="color:#888;">Yüklü rapor bulunamadı.</p>
+            </div>
+            """, unsafe_allow_html=True)
 
 def page_musteri_hizmetleri():
     st.markdown('<div class="content-box"><h2>📞 Destek & Notlar</h2></div>', unsafe_allow_html=True)
