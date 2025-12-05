@@ -19,10 +19,16 @@ st.set_page_config(
 def send_verification_email(to_email, code):
     """Kullanıcıya doğrulama kodu gönderir."""
     # Secrets'tan gönderici bilgilerini al
-    sender_email = st.secrets["smtp"]["email"]
-    sender_password = st.secrets["smtp"]["password"]
-    smtp_server = st.secrets["smtp"]["server"]
-    smtp_port = st.secrets["smtp"]["port"]
+    # Eğer secrets tanımlı değilse hata vermemesi için try-except veya get kullanılabilir
+    # Ancak uygulamanın çalışması için bu bilgilerin st.secrets içinde olması şarttır.
+    try:
+        sender_email = st.secrets["smtp"]["email"]
+        sender_password = st.secrets["smtp"]["password"]
+        smtp_server = st.secrets["smtp"]["server"]
+        smtp_port = st.secrets["smtp"]["port"]
+    except KeyError:
+        st.error("SMTP ayarları bulunamadı! Lütfen Secrets ayarlarını yapılandırın.")
+        return False
 
     msg = EmailMessage()
     msg.set_content(f"""
@@ -249,25 +255,3 @@ if uploaded_file:
                     st.dataframe(match_detail_df.sort_values(by='Adet', ascending=False), use_container_width=True, hide_index=True)
 else:
     st.info("👈 Analize başlamak için lütfen sol menüden 'Dosya Yükleme' alanını kullanın.")
-```
-
-### ÖNEMLİ: Bu Sistemin Çalışması İçin Ayar Yapmalısınız
-
-Kodun çalışması için bir e-posta adresine ve o adresin şifresine ihtiyacı vardır. Normal mail şifresi (özellikle Gmail için) güvenlik nedeniyle çalışmaz, bunun yerine **"Uygulama Şifresi"** almalısınız.
-
-**1. Gmail İçin Uygulama Şifresi Alma (Önerilen):**
-1.  Google Hesabım > Güvenlik > **2 Adımlı Doğrulama**'yı açın.
-2.  Yine Güvenlik sayfasında, arama kutusuna "Uygulama Şifreleri" yazın.
-3.  Uygulama adı olarak "BJK Analiz" yazın ve oluştur deyin.
-4.  Size verdiği 16 haneli şifreyi kopyalayın.
-
-**2. Streamlit Cloud Ayarları (Secrets):**
-1.  Streamlit Cloud'da uygulamanızın **Settings > Secrets** kısmına gidin.
-2.  Daha önceki şifreyi silin ve yerine şunu yapıştırın (kendi mail bilgilerinizi yazın):
-
-```toml
-[smtp]
-server = "smtp.gmail.com"
-port = 465
-email = "sizin.mailiniz@gmail.com"
-password = "buraya_16_haneli_uygulama_sifresini_yazin"
