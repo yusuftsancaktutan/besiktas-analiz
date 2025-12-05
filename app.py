@@ -1,6 +1,10 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import smtplib
+from email.message import EmailMessage
+import random
+import time
 
 # --- Sayfa Ayarları ---
 st.set_page_config(
@@ -10,47 +14,115 @@ st.set_page_config(
 )
 
 # -------------------------------------------------------------------------
-# GÜVENLİK MODÜLÜ (E-posta Domain + Şifre Kontrolü)
+# GÜVENLİK MODÜLÜ (E-posta Doğrulama Kodu ile Giriş)
 # -------------------------------------------------------------------------
+def send_verification_email(to_email, code):
+    """Kullanıcıya doğrulama kodu gönderir."""
+    # Secrets'tan gönderici bilgilerini al
+    sender_email = st.secrets["smtp"]["email"]
+    sender_password = st.secrets["smtp"]["password"]
+    smtp_server = st.secrets["smtp"]["server"]
+    smtp_port = st.secrets["smtp"]["port"]
+
+    msg = EmailMessage()
+    msg.set_content(f"""
+    Merhaba,
+    
+    Beşiktaş JK Bilet Analiz Paneli'ne giriş için doğrulama kodunuz:
+    
+    {code}
+    
+    Bu kodu kimseyle paylaşmayınız.
+    """)
+    
+    msg['Subject'] = 'BJK Analiz - Giriş Doğrulama Kodu'
+    msg['From'] = sender_email
+    msg['To'] = to_email
+
+    try:
+        # Gmail ve çoğu servis için SSL kullanılır (Port 465)
+        with smtplib.SMTP_SSL(smtp_server, smtp_port) as server:
+            server.login(sender_email, sender_password)
+            server.send_message(msg)
+        return True
+    except Exception as e:
+        st.error(f"E-posta gönderilemedi. Hata: {e}")
+        return False
+
 def check_login():
-    """BJK Maili ve Şifre kontrolü yapar."""
+    """Doğrulama kodu ile giriş sistemi."""
     
     # Oturum açılmışsa True dön
     if st.session_state.get("logged_in", False):
         return True
 
-    # Giriş Ekranı Tasarımı
+    # Session State Başlangıç Değerleri
+    if "login_step" not in st.session_state:
+        st.session_state["login_step"] = "email" # email | verify
+    if "verification_code" not in st.session_state:
+        st.session_state["verification_code"] = None
+    if "email_to_verify" not in st.session_state:
+        st.session_state["email_to_verify"] = None
+
+    # --- TASARIM ---
     st.markdown("""
     <style>
         .stTextInput > div > div > input {text-align: center;}
-        div[data-testid="stForm"] {border: 2px solid #E30613; padding: 20px; border-radius: 10px;}
+        div[data-testid="stForm"] {border: 2px solid #E30613; padding: 30px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);}
     </style>
     """, unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
         st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Besiktas_jk.svg/240px-Besiktas_jk.svg.png", width=100)
-        st.markdown("<h3 style='text-align: center;'>Kurumsal Giriş</h3>", unsafe_allow_html=True)
-        
-        with st.form("login_form"):
-            email = st.text_input("Kurumsal E-posta Adresiniz", placeholder="ornek@bjk.com.tr")
-            password = st.text_input("Erişim Şifresi", type="password")
-            submit_button = st.form_submit_button("Giriş Yap")
-            
-            if submit_button:
-                # 1. Kontrol: Domain @bjk.com.tr mi?
-                if not email.strip().lower().endswith("@bjk.com.tr"):
-                    st.error("⛔ Hata: Sadece @bjk.com.tr uzantılı mail adresleri ile giriş yapılabilir.")
-                    return False
+        st.markdown("<h3 style='text-align: center;'>Güvenli Giriş Paneli</h3>", unsafe_allow_html=True)
+
+        # ADIM 1: E-POSTA GİRİŞİ
+        if st.session_state["login_step"] == "email":
+            with st.form("email_form"):
+                st.info("Devam etmek için kurumsal e-posta adresinizi giriniz.")
+                email_input = st.text_input("E-posta Adresi", placeholder="ad.soyad@bjk.com.tr")
+                submit_email = st.form_submit_button("Doğrulama Kodu Gönder")
                 
-                # 2. Kontrol: Şifre doğru mu? (Secrets'tan kontrol eder)
-                elif password == st.secrets["password"]:
-                    st.session_state["logged_in"] = True
-                    st.success("Giriş başarılı! Yönlendiriliyor...")
+                if submit_email:
+                    if not email_input.strip().lower().endswith("@bjk.com.tr"):
+                        st.error("⛔ Sadece @bjk.com.tr uzantılı mail adresleri kabul edilmektedir.")
+                    else:
+                        # Kod Üret ve Gönder
+                        code = str(random.randint(100000, 999999))
+                        st.session_state["verification_code"] = code
+                        st.session_state["email_to_verify"] = email_input
+                        
+                        with st.spinner("Kod gönderiliyor..."):
+                            success = send_verification_email(email_input, code)
+                        
+                        if success:
+                            st.session_state["login_step"] = "verify"
+                            st.rerun()
+
+        # ADIM 2: KOD DOĞRULAMA
+        elif st.session_state["login_step"] == "verify":
+            with st.form("verify_form"):
+                st.success(f"✅ Doğrulama kodu {st.session_state['email_to_verify']} adresine gönderildi.")
+                code_input = st.text_input("Gelen 6 Haneli Kodu Giriniz", max_chars=6)
+                col_btn1, col_btn2 = st.columns(2)
+                with col_btn1:
+                    submit_code = st.form_submit_button("Girişi Onayla")
+                with col_btn2:
+                    cancel = st.form_submit_button("Geri Dön")
+
+                if cancel:
+                    st.session_state["login_step"] = "email"
                     st.rerun()
                 
-                else:
-                    st.error("Hata: Şifre yanlış!")
+                if submit_code:
+                    if code_input == st.session_state["verification_code"]:
+                        st.session_state["logged_in"] = True
+                        st.success("Giriş Başarılı! Yönlendiriliyorsunuz...")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error("Hatalı kod! Lütfen tekrar deneyiniz.")
 
     return False
 
@@ -92,6 +164,7 @@ with st.sidebar:
     
     if st.button("Çıkış Yap"):
         st.session_state["logged_in"] = False
+        st.session_state["login_step"] = "email"
         st.rerun()
 
 # --- Veri İşleme Fonksiyonu ---
@@ -176,3 +249,25 @@ if uploaded_file:
                     st.dataframe(match_detail_df.sort_values(by='Adet', ascending=False), use_container_width=True, hide_index=True)
 else:
     st.info("👈 Analize başlamak için lütfen sol menüden 'Dosya Yükleme' alanını kullanın.")
+```
+
+### ÖNEMLİ: Bu Sistemin Çalışması İçin Ayar Yapmalısınız
+
+Kodun çalışması için bir e-posta adresine ve o adresin şifresine ihtiyacı vardır. Normal mail şifresi (özellikle Gmail için) güvenlik nedeniyle çalışmaz, bunun yerine **"Uygulama Şifresi"** almalısınız.
+
+**1. Gmail İçin Uygulama Şifresi Alma (Önerilen):**
+1.  Google Hesabım > Güvenlik > **2 Adımlı Doğrulama**'yı açın.
+2.  Yine Güvenlik sayfasında, arama kutusuna "Uygulama Şifreleri" yazın.
+3.  Uygulama adı olarak "BJK Analiz" yazın ve oluştur deyin.
+4.  Size verdiği 16 haneli şifreyi kopyalayın.
+
+**2. Streamlit Cloud Ayarları (Secrets):**
+1.  Streamlit Cloud'da uygulamanızın **Settings > Secrets** kısmına gidin.
+2.  Daha önceki şifreyi silin ve yerine şunu yapıştırın (kendi mail bilgilerinizi yazın):
+
+```toml
+[smtp]
+server = "smtp.gmail.com"
+port = 465
+email = "sizin.mailiniz@gmail.com"
+password = "buraya_16_haneli_uygulama_sifresini_yazin"
