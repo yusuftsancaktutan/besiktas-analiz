@@ -1,21 +1,96 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import smtplib
 from email.message import EmailMessage
 import random
 import time
 from io import BytesIO
 
-# --- Sayfa Ayarları ---
+# --- 1. Sayfa Konfigürasyonu (En başta olmalı) ---
 st.set_page_config(
-    page_title="BJK Bilet Analiz",
+    page_title="BJK Bilet Departmanı",
     page_icon="🦅",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
+# --- 2. Özel CSS (BJK Kurumsal Teması) ---
+st.markdown("""
+    <style>
+        /* Genel Arka Plan */
+        .stApp {
+            background-color: #f8f9fa;
+        }
+        
+        /* Sidebar (Sol Menü) Tasarımı */
+        [data-testid="stSidebar"] {
+            background-color: #1a1a1a;
+            color: white;
+        }
+        [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
+            color: white !important;
+        }
+        [data-testid="stSidebar"] label {
+            color: #dddddd !important;
+            font-weight: bold;
+        }
+        
+        /* Radyo Butonları (Menü Öğeleri) */
+        .stRadio > div {
+            background-color: transparent;
+        }
+        .stRadio label {
+            color: white !important;
+            font-size: 16px;
+            padding: 10px;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
+        .stRadio label:hover {
+            background-color: #333333;
+        }
+        
+        /* Kırmızı Vurgular (Butonlar ve Metrikler) */
+        div[data-testid="stMetricValue"] {
+            color: #E30613; 
+            font-weight: 900;
+        }
+        .stButton>button {
+            background-color: #E30613;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            padding: 0.5rem 1rem;
+            transition: all 0.3s ease;
+        }
+        .stButton>button:hover {
+            background-color: #b30000;
+            color: white;
+            border: none;
+        }
+
+        /* Başlıklar */
+        h1, h2, h3 {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-weight: 800;
+            color: #1a1a1a;
+        }
+        
+        /* Giriş Ekranı */
+        div[data-testid="stForm"] {
+            background-color: white;
+            border-top: 5px solid #E30613;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 # -------------------------------------------------------------------------
-# YARDIMCI FONKSİYONLAR (Excel İndirme vb.)
+# 3. YARDIMCI FONKSİYONLAR
 # -------------------------------------------------------------------------
 def convert_df_to_excel(df):
     """Dataframe'i indirilebilir Excel formatına çevirir."""
@@ -25,11 +100,52 @@ def convert_df_to_excel(df):
     processed_data = output.getvalue()
     return processed_data
 
+def process_data(file):
+    """Excel/CSV dosyasını işler ve temizler."""
+    try:
+        if file.name.endswith('.csv'):
+            df_raw = pd.read_csv(file, header=None)
+        else:
+            df_raw = pd.read_excel(file, header=None)
+        
+        header_index = -1
+        for i, row in df_raw.head(20).iterrows(): 
+            row_str = row.astype(str).str.lower().to_string()
+            if "maç" in row_str or "tribün" in row_str or "tribun" in row_str:
+                header_index = i
+                break
+        
+        if header_index == -1:
+            st.error("Başlık satırı bulunamadı.")
+            return None
+
+        df_raw.columns = df_raw.iloc[header_index]
+        df = df_raw[header_index + 1:].reset_index(drop=True)
+        df.columns = [str(c).strip() for c in df.columns]
+        
+        cols = df.columns
+        if len(cols) >= 3:
+            rename_map = {cols[-1]: 'Adet', cols[-2]: 'Tribun', cols[0]: 'Mac'}
+            df.rename(columns=rename_map, inplace=True)
+        
+        df = df[pd.to_numeric(df['Adet'], errors='coerce').notnull()]
+        
+        if df['Adet'].dtype == 'object':
+             df['Adet'] = df['Adet'].astype(str).str.replace('.', '').str.replace(',', '.').astype(int)
+        else:
+             df['Adet'] = df['Adet'].astype(int)
+
+        df = df[~df['Mac'].astype(str).str.contains('Toplam', case=False, na=False)]
+        return df
+
+    except Exception as e:
+        st.error(f"Veri hatası: {e}")
+        return None
+
 # -------------------------------------------------------------------------
-# GÜVENLİK MODÜLÜ
+# 4. GÜVENLİK VE GİRİŞ SİSTEMİ
 # -------------------------------------------------------------------------
 def send_verification_email(to_email, code):
-    """Kullanıcıya doğrulama kodu gönderir."""
     try:
         sender_email = st.secrets["smtp"]["email"]
         sender_password = st.secrets["smtp"]["password"]
@@ -43,11 +159,11 @@ def send_verification_email(to_email, code):
     msg.set_content(f"""
     Merhaba,
     
-    Beşiktaş JK Bilet Analiz Paneli giriş kodunuz: {code}
+    Beşiktaş JK Bilet Departmanı Portal giriş kodunuz: {code}
     
     Güvenliğiniz için bu kodu paylaşmayınız.
     """)
-    msg['Subject'] = 'BJK Analiz - Giriş Kodu'
+    msg['Subject'] = 'BJK Portal - Giris Kodu'
     msg['From'] = sender_email
     msg['To'] = to_email
 
@@ -71,17 +187,16 @@ def check_login():
     if "email_to_verify" not in st.session_state:
         st.session_state["email_to_verify"] = None
 
-    st.markdown("""
-    <style>
-        .stTextInput > div > div > input {text-align: center;}
-        div[data-testid="stForm"] {border: 2px solid #E30613; padding: 30px; border-radius: 15px;}
-    </style>
-    """, unsafe_allow_html=True)
-    
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
-        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Besiktas_jk.svg/240px-Besiktas_jk.svg.png", width=100)
-        st.markdown("<h3 style='text-align: center;'>Güvenli Giriş Paneli</h3>", unsafe_allow_html=True)
+    # Giriş Ekranı Düzeni
+    col_spacer1, col_login, col_spacer2 = st.columns([1, 2, 1])
+    with col_login:
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        col_img, col_txt = st.columns([1, 3])
+        with col_img:
+            st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Besiktas_jk.svg/240px-Besiktas_jk.svg.png", width=100)
+        with col_txt:
+            st.markdown("## BJK Bilet Departmanı")
+            st.caption("Personel Giriş Portalı")
 
         if st.session_state["login_step"] == "email":
             with st.form("email_form"):
@@ -126,174 +241,169 @@ def check_login():
                         st.error("Hatalı kod!")
     return False
 
+# Giriş Kontrolü
 if not check_login():
     st.stop()
 
 # -------------------------------------------------------------------------
-# ANA UYGULAMA
+# 5. SAYFA İÇERİKLERİ (Modüller)
 # -------------------------------------------------------------------------
 
-st.markdown("""
-    <style>
-        .block-container {padding-top: 1rem;}
-        div[data-testid="stMetricValue"] {color: #E30613; font-weight: bold;}
-        .stButton>button {background-color: #E30613; color: white; border-radius: 8px; width: 100%;}
-    </style>
-""", unsafe_allow_html=True)
+def page_dashboard():
+    st.title("🦅 Yönetim Paneli")
+    st.markdown("Hoş geldiniz. Sol menüden işlem yapmak istediğiniz modülü seçebilirsiniz.")
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("""
+        <div style="background-color:white; padding:20px; border-radius:10px; border-left:5px solid #E30613; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+            <h4>🎫 Aktif Raporlar</h4>
+            <p>Son yüklenen maç verilerine hızlı erişim.</p>
+        </div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.markdown("""
+        <div style="background-color:white; padding:20px; border-radius:10px; border-left:5px solid #1a1a1a; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+            <h4>🏟️ Stadyum Durumu</h4>
+            <p>Blok bazlı doluluk oranları ve planlar.</p>
+        </div>
+        """, unsafe_allow_html=True)
+    with col3:
+        st.markdown("""
+        <div style="background-color:white; padding:20px; border-radius:10px; border-left:5px solid #E30613; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+            <h4>📞 Destek</h4>
+            <p>Müşteri hizmetleri kayıtları ve notlar.</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("### Duyurular")
+    st.info("📢 2024-2025 Sezonu Kombine satışları için analiz raporlarının Cuma gününe kadar tamamlanması gerekmektedir.")
 
-col_title_main = st.columns([1, 8])
-with col_title_main[1]:
-    st.title("BEŞİKTAŞ JK | Bilet Analiz Paneli")
-    st.caption("2024-2025 Sezonu Bedelsiz Bilet Takip Sistemi")
+def page_bilet_analiz():
+    st.title("🎫 Bilet Raporlama Sistemi")
+    st.markdown("Excel/CSV formatındaki Passolig raporlarını yükleyerek analiz yapabilirsiniz.")
+    
+    uploaded_file = st.file_uploader("Dosya Yükle", type=['xlsx', 'xls', 'csv'])
+    
+    if uploaded_file:
+        df = process_data(uploaded_file)
+        if df is not None:
+            # Özet Veriler
+            match_summary = df.groupby('Mac')['Adet'].sum().sort_values(ascending=False).reset_index()
+            total_tickets = match_summary['Adet'].sum()
+            total_matches = len(match_summary)
+            
+            # KPI
+            kpi1, kpi2, kpi3 = st.columns(3)
+            kpi1.metric("Analiz Edilen Maç", f"{total_matches}")
+            kpi2.metric("Toplam Bilet", f"{total_tickets:,.0f}".replace(',', '.'))
+            kpi3.metric("En Yüksek Maç", f"{match_summary.iloc[0]['Adet']:,.0f}", delta=match_summary.iloc[0]['Mac'][:15]+"...")
+            
+            st.markdown("---")
+            
+            # Grafikler
+            tab1, tab2 = st.tabs(["📊 Genel Analiz", "🔍 Maç Detayı"])
+            
+            with tab1:
+                fig = px.bar(match_summary, x='Mac', y='Adet', text_auto='.2s', 
+                             color='Adet', color_continuous_scale=['#333333', '#E30613'],
+                             title="Maç Bazlı Bilet Dağılımı")
+                fig.update_layout(height=500)
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Excel İndir
+                excel_data = convert_df_to_excel(match_summary)
+                st.download_button("📥 Özet Tabloyu İndir", data=excel_data, file_name='ozet_rapor.xlsx')
 
-st.markdown("---")
+            with tab2:
+                selected_match = st.selectbox("Maç Seçiniz:", match_summary['Mac'])
+                if selected_match:
+                    match_detail = df[df['Mac'] == selected_match].groupby('Tribun')['Adet'].sum().reset_index().sort_values(by='Adet', ascending=True)
+                    
+                    c1, c2 = st.columns([2, 1])
+                    with c1:
+                        fig_det = px.bar(match_detail, x='Adet', y='Tribun', orientation='h', text_auto=True, 
+                                         color_discrete_sequence=['#1a1a1a'], title=f"{selected_match} Tribün Dağılımı")
+                        st.plotly_chart(fig_det, use_container_width=True)
+                    with c2:
+                        st.dataframe(match_detail.sort_values(by='Adet', ascending=False), use_container_width=True, hide_index=True)
+                        
+                        det_excel = convert_df_to_excel(match_detail)
+                        st.download_button("📥 Detayı İndir", data=det_excel, file_name=f"{selected_match}_detay.xlsx")
+    else:
+        st.info("👆 Analize başlamak için lütfen yukarıdan dosya yükleyiniz.")
 
+def page_stadyum_plani():
+    st.title("🏟️ Stadyum Planı ve Bloklar")
+    st.markdown("Tüpraş Stadyumu blok yerleşim planı ve kapasite bilgileri.")
+    
+    col_img, col_info = st.columns([2, 1])
+    with col_img:
+        # Temsili stadyum görseli (Placeholder)
+        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Vodafone_Arena_nuit.jpg/1200px-Vodafone_Arena_nuit.jpg", 
+                 caption="Tüpraş Stadyumu", use_container_width=True)
+    
+    with col_info:
+        st.subheader("Kapasite Bilgileri")
+        st.markdown("""
+        - **Toplam Kapasite:** 42.590
+        - **Doğu Tribünü:** 12.000
+        - **Batı Tribünü:** 10.500
+        - **Kuzey Kale Arkası:** 10.045
+        - **Güney Kale Arkası:** 10.045
+        """)
+        
+        st.warning("⚠️ Kuzey Üst Tribünü'nde bakım çalışması planlanmaktadır.")
+
+def page_musteri_hizmetleri():
+    st.title("📞 Müşteri Hizmetleri & Notlar")
+    
+    with st.expander("Yeni Not Ekle", expanded=True):
+        with st.form("not_form"):
+            konu = st.text_input("Konu")
+            not_icerik = st.text_area("Notunuz")
+            submitted = st.form_submit_button("Kaydet")
+            if submitted:
+                st.success("Not sisteme kaydedildi.")
+    
+    st.markdown("### Son Kayıtlar")
+    st.table(pd.DataFrame({
+        'Tarih': ['05.12.2024', '04.12.2024'],
+        'Personel': ['Ahmet Y.', 'Mehmet K.'],
+        'Konu': ['VIP Kombine İadesi', 'Passolig Sorunu'],
+        'Durum': ['Çözüldü', 'Beklemede']
+    }))
+
+# -------------------------------------------------------------------------
+# 6. ANA NAVİGASYON (Sidebar ve Sayfa Yönlendirme)
+# -------------------------------------------------------------------------
+
+# Sidebar Logo ve Başlık
 with st.sidebar:
-    st.header("📂 Veri Yükleme")
-    uploaded_file = st.file_uploader("Rapor dosyasını yükleyin", type=['xlsx', 'xls', 'csv'])
+    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Besiktas_jk.svg/240px-Besiktas_jk.svg.png", width=120)
+    st.markdown("### BJK Bilet Departmanı")
+    st.markdown(f"👤 **Aktif Kullanıcı:**\n{st.session_state.get('email_to_verify', 'Personel')}")
+    st.markdown("---")
+    
+    # Menü Seçimi
+    selected_page = st.radio(
+        "MENÜ", 
+        ["Ana Sayfa", "Bilet Rapor Sistemi", "Stadyum Planı", "Müşteri Hizmetleri"],
+        index=0
+    )
     
     st.markdown("---")
-    if st.button("Çıkış Yap"):
+    if st.button("🚪 Güvenli Çıkış"):
         st.session_state["logged_in"] = False
         st.session_state["login_step"] = "email"
         st.rerun()
 
-def process_data(file):
-    try:
-        if file.name.endswith('.csv'):
-            df_raw = pd.read_csv(file, header=None)
-        else:
-            df_raw = pd.read_excel(file, header=None)
-        
-        header_index = -1
-        for i, row in df_raw.head(20).iterrows(): 
-            row_str = row.astype(str).str.lower().to_string()
-            if "maç" in row_str or "tribün" in row_str or "tribun" in row_str:
-                header_index = i
-                break
-        
-        if header_index == -1:
-            st.error("Başlık satırı bulunamadı.")
-            return None
-
-        df_raw.columns = df_raw.iloc[header_index]
-        df = df_raw[header_index + 1:].reset_index(drop=True)
-        df.columns = [str(c).strip() for c in df.columns]
-        
-        cols = df.columns
-        if len(cols) >= 3:
-            rename_map = {cols[-1]: 'Adet', cols[-2]: 'Tribun', cols[0]: 'Mac'}
-            df.rename(columns=rename_map, inplace=True)
-        
-        df = df[pd.to_numeric(df['Adet'], errors='coerce').notnull()]
-        
-        if df['Adet'].dtype == 'object':
-             df['Adet'] = df['Adet'].astype(str).str.replace('.', '').str.replace(',', '.').astype(int)
-        else:
-             df['Adet'] = df['Adet'].astype(int)
-
-        df = df[~df['Mac'].astype(str).str.contains('Toplam', case=False, na=False)]
-        return df
-
-    except Exception as e:
-        st.error(f"Veri hatası: {e}")
-        return None
-
-if uploaded_file:
-    df = process_data(uploaded_file)
-    
-    if df is not None:
-        # Veri Hazırlığı
-        match_summary = df.groupby('Mac')['Adet'].sum().sort_values(ascending=False).reset_index()
-        tribune_summary = df.groupby('Tribun')['Adet'].sum().sort_values(ascending=False).reset_index()
-        
-        total_tickets = match_summary['Adet'].sum()
-        total_matches = len(match_summary)
-        top_match = match_summary.iloc[0]['Mac']
-        top_match_count = match_summary.iloc[0]['Adet']
-
-        # KPI Alanı
-        kpi1, kpi2, kpi3 = st.columns(3)
-        kpi1.metric("Analiz Edilen Maç", f"{total_matches}")
-        kpi2.metric("Toplam Yüklenen Bilet", f"{total_tickets:,.0f}".replace(',', '.'))
-        kpi3.metric("Rekor Maç", f"{top_match_count:,.0f}", delta="En Yüksek")
-        
-        st.markdown("---")
-
-        # Sekmeler
-        tab1, tab2, tab3 = st.tabs(["📊 Genel Bakış", "🏟️ Tribün Analizi", "🔍 Maç Detayı"])
-
-        # TAB 1: GENEL BAKIŞ
-        with tab1:
-            col_chart1, col_chart2 = st.columns([2, 1])
-            with col_chart1:
-                st.subheader("Maç Bazlı Yoğunluk")
-                fig_bar = px.bar(match_summary, x='Mac', y='Adet', text_auto='.2s', color='Adet', color_continuous_scale=['#333333', '#E30613'])
-                fig_bar.update_layout(xaxis_title="", yaxis_title="Bilet Sayısı", height=450)
-                st.plotly_chart(fig_bar, use_container_width=True)
-
-            with col_chart2:
-                st.subheader("Veri İndir")
-                st.write("Analiz sonuçlarını Excel olarak indirin.")
-                
-                # Excel İndirme Butonu
-                excel_data = convert_df_to_excel(match_summary)
-                st.download_button(
-                    label="📥 Özet Tabloyu İndir (Excel)",
-                    data=excel_data,
-                    file_name='bjk_mac_ozeti.xlsx',
-                    mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                )
-                
-                st.markdown("---")
-                st.subheader("Dağılım")
-                fig_pie = px.pie(match_summary.head(8), values='Adet', names='Mac', color_discrete_sequence=px.colors.sequential.RdBu)
-                fig_pie.update_layout(showlegend=False, height=300)
-                fig_pie.update_traces(textposition='inside', textinfo='percent')
-                st.plotly_chart(fig_pie, use_container_width=True)
-
-        # TAB 2: TRİBÜN ANALİZİ (YENİ)
-        with tab2:
-            st.subheader("Sezonluk Tribün Doluluk Analizi")
-            st.write("Hangi tribüne sezon boyunca toplam ne kadar bedelsiz bilet yüklenmiş?")
-            
-            fig_tribune_all = px.bar(tribune_summary, x='Adet', y='Tribun', orientation='h', text_auto='.2s', color='Adet', color_continuous_scale=['#E30613', '#000000'])
-            fig_tribune_all.update_layout(height=600, yaxis={'categoryorder':'total ascending'})
-            st.plotly_chart(fig_tribune_all, use_container_width=True)
-            
-            with st.expander("Tribün Verilerini Gör"):
-                st.dataframe(tribune_summary, use_container_width=True)
-
-        # TAB 3: MAÇ DETAYI
-        with tab3:
-            col_select, col_dl = st.columns([2, 1])
-            with col_select:
-                selected_match = st.selectbox("İncelemek istediğiniz maçı seçin:", match_summary['Mac'])
-            
-            if selected_match:
-                match_detail_df = df[df['Mac'] == selected_match].groupby('Tribun')['Adet'].sum().reset_index().sort_values(by='Adet', ascending=True)
-                
-                with col_dl:
-                    st.write("") # Boşluk
-                    st.write("") 
-                    # Seçilen maçın detayını indirme butonu
-                    match_excel = convert_df_to_excel(match_detail_df.sort_values(by='Adet', ascending=False))
-                    st.download_button(
-                        label=f"📥 {selected_match[:15]}... Detayını İndir",
-                        data=match_excel,
-                        file_name=f'{selected_match}_detay.xlsx',
-                        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    )
-
-                det_col1, det_col2 = st.columns([1, 1])
-                with det_col1:
-                    st.markdown(f"### 🏟️ {selected_match}")
-                    fig_tribune = px.bar(match_detail_df, x='Adet', y='Tribun', orientation='h', text_auto=True, color_discrete_sequence=['#333333'])
-                    fig_tribune.update_layout(height=500)
-                    st.plotly_chart(fig_tribune, use_container_width=True)
-                with det_col2:
-                    st.markdown("### 📋 Liste Görünümü")
-                    st.dataframe(match_detail_df.sort_values(by='Adet', ascending=False), use_container_width=True, hide_index=True)
-
-else:
-    st.info("👈 Veri yükleyerek analize başlayın.")
+# Sayfa Yönlendirme Mantığı
+if selected_page == "Ana Sayfa":
+    page_dashboard()
+elif selected_page == "Bilet Rapor Sistemi":
+    page_bilet_analiz()
+elif selected_page == "Stadyum Planı":
+    page_stadyum_plani()
+elif selected_page == "Müşteri Hizmetleri":
+    page_musteri_hizmetleri()
